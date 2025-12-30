@@ -152,8 +152,8 @@ stack_x_to_wordptr0:
   rts
 
 clear_stack_from_y_via_ax .macro
-  dey
-  dey
+;  dey
+;  dey
   tya ; y contains 'frame pointer' == base stack
   tax ; ...move it the long way around...
   txs ; to set stack size to before expression

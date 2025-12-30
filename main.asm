@@ -26,7 +26,7 @@ init:
 
 
 hello:
-  .text 15, "Hello, world!", 0
+  .text 15, "Hello from Sgetti!", 0
 
 program:
 ;  .text PRIM_SETB, PRIM_PUSHW, $2000, PRIM_PUSHB, 42, PRIM_EVAL, 3, PRIM_DONE

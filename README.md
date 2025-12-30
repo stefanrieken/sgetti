@@ -81,8 +81,11 @@ A hack known as the 'RTS Trick'
 
 
 ## Current state
-Sgetti can currently evaluate pre-compiled expressions.
+Sgetti can currently evaluate pre-compiled expressions and compiles with the
+neo6502 emulator as a target (see the `run` Makefile target for details).
 
-The demo program will write (`setb`) the value `42` in memory address `$2000`.
-This can be checked by running `print peek(8192)` from (neo6502) Basic.
+The demo program will write a "Hello, World" style message on the screen.
+A second program (see main.asm) will write (`setb`) the value `42` in memory
+address `$2000`. This can be checked by running `print peek(8192)` from
+(neo6502) Basic.
 
