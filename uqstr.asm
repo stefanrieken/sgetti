@@ -7,18 +7,22 @@ stringmem = $3000   ; any place in RAM for now
 ; - wordptr0 = string to add
 ; - wordptr1 = used to index over string mem
 ; - returns wordptr0 to unique string
+; - returns nth string in x
 
 unique_string:
+    ldx #$0 ; using x as counter
     sta wordptr0      ; (if) wordptr0 is passed in A/Y, store its value in zero page so we can use it
     sty wordptr0+1
-    lda #<stringmem   ; copy 16-bit pointer to start of strings
+    ;lda #<stringmem   ; copy 16-bit pointer to start of strings
+    lda #<fixed_strings   ; copy 16-bit pointer to start of strings
     sta wordptr1+0    ; for use as counter
-    lda #>stringmem
+    ;lda #>stringmem
+    lda #>fixed_strings   ; copy 16-bit pointer to start of strings
     sta wordptr1+1
 _compare_string:
     ldy #0
     lda (wordptr1),y  ; load current string size
-    beq _new_ustring  ; if string size is zero, add new string here
+    beq _switch_to_stringmem  ; if string size is zero, we're at and of our search
     dey               ; set y to #$FF to compare both size and value
 _compare_chars:
     iny
@@ -27,6 +31,7 @@ _compare_chars:
     cmp (wordptr0),y
     beq _compare_chars ; so far so same
 _next_ustring:
+    inx ; using x as counter
     ldy #0
     lda (wordptr1),y ; size of string in A
     clc
@@ -36,6 +41,16 @@ _next_ustring:
     adc wordptr1+1   ; process carry
     sta wordptr1+1
     jmp _compare_string ; and continue the comparison process
+_switch_to_stringmem:
+    txa
+    cmp #NUM_FIXED_STRINGS-1 ; were we at end of fixed or dynamic string mem?
+    beq _new_ustring ; if the latter, append new string
+    lda #<stringmem  ; otherwise, switch to dynamic string mem and search again
+    sta wordptr1+0
+    lda #>stringmem
+    sta wordptr1+1
+    inx
+    jmp _compare_string
 _new_ustring:
     ; transfer from wordptr0 to wordptr1; zero terminated
     ldy #$FF

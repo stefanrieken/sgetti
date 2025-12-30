@@ -22,8 +22,6 @@ tmp = $19           ; technically in use on c64, but it's ours now
 wordptr0 = $FB      ; c64: fully unused zero page address
 wordptr1 = $FD      ; c64: fully unused zero page address
 
-
-
 ;
 ; Main engine
 ;
@@ -165,6 +163,12 @@ jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <eval-1, <done-1, <setb, <print
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >eval-1, >done-1, >setb, >print
+
+fixed_strings:
+  .text 6, "setb", 0
+  .text 7, "print", 0, 0
+
+NUM_FIXED_STRINGS=2
 
 PRIM_PUSHB=2
 PRIM_PUSHW=3

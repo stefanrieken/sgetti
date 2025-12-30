@@ -12,7 +12,7 @@ init:
   ldx #$FF
   txs
 
-; Make a unique string. Should be at start of stringmem.
+; Make a unique string. Should end up at start of dynamic stringmem.
   lda #<hello
   ldy #>hello
   jsr unique_string
@@ -23,7 +23,6 @@ init:
   lda #>program
   sta ip+1
   jmp thread_loop
-
 
 hello:
   .text 15, "Hello from Sgetti!", 0
