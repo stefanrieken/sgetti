@@ -11,6 +11,7 @@ stringmem = $3000   ; any place in RAM for now
 
 unique_string:
     ldx #$0 ; using x as counter
+    stx tmp ; use tmp to indicate whether we've switched from fixed to dynamic string mem
     sta wordptr0      ; (if) wordptr0 is passed in A/Y, store its value in zero page so we can use it
     sty wordptr0+1
     ;lda #<stringmem   ; copy 16-bit pointer to start of strings
@@ -41,25 +42,18 @@ _next_ustring:
     adc wordptr1+1   ; process carry
     sta wordptr1+1
     jmp _compare_string ; and continue the comparison process
-_switch_to_stringmem:
-    txa
-    cmp #NUM_FIXED_STRINGS ; were we at end of fixed or dynamic string mem?
-    bne _new_ustring ; if we are not at the exact border, we must be in the latter, so we can append new string
-
-    lda #<stringmem  ; problem is, x doesn't tell us whether we're at end of one or fresh start of other
-    cmp wordptr1+0   ; so instead, check if we just switched
-    bne _switch      ; and otherwise do it now
-    lda #>stringmem
-    cmp wordptr1+1
-    beq _new_ustring ; yes, we just switched; make new string
-_switch:
+_switch_to_stringmem:   ; switch from static to dynamic string memory
+    lda tmp             ; keep track of switch in tmp
+    bne _new_ustring    ; already switched
+    lda #<stringmem
     sta wordptr1+0
     lda #>stringmem
     sta wordptr1+1
-    jmp _compare_string
-_hmmmm:              ; we had already switched
+    inc tmp             ; keep track of switch in tmp
+    bne _compare_string
 _new_ustring:
     ; transfer from wordptr0 to wordptr1; zero terminated
+    inx ; using x as counter
     ldy #$FF
 _loop:
     iny
