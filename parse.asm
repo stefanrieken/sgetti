@@ -2,43 +2,34 @@
 
 *=$0800
 
-stringbuf=5000 ; let's snatch up an arbitrary 4k area for now
+stringbuf=5000 ; arbitrarily chosen. Max 256 bytes
 
 ReadLine=$FFEB
 WriteCharacter = $fff1
 Parameters=$FF04
 
-tmp = $19           ; technically in use on c64, but it's ours now
-wordptr0 = $FB      ; c64: fully unused zero page address
-wordptr1 = $FD      ; c64: fully unused zero page address
+strlen = $20
 wordptr2 = $22      ; c64: 'utility pointer area for the BASIC interpreter'
+
 init:
-;  lda #0
-;  sta stringmem
+  lda #0
+  sta stringmem
   ldx #$FF
   txs
 
+
+
+; Parse code
+
 parse:
 
-  jsr ReadLine
+  jsr read_new_line
 
-; Line is returned as a length prefixed string pointed to by parameters 0 and 1
-; So copy that pointer to zero page so we can follow it
-  lda Parameters+0
-  sta wordptr0
-  lda Parameters+1
-  sta wordptr0+1
+clc
+adc #$30
+jsr WriteCharacter
 
-; Print the size
-  ldy #$0
-  lda (wordptr0),y
-  clc
-  adc #$30
-  jsr WriteCharacter
-
-; On to the first character
-  iny
-  lda (wordptr0),y
+  #next_char
 
 _switch_on_first_char:
 
@@ -54,8 +45,7 @@ _try_number:
   lda #$0
   sta wordptr1+1
 _more_digits:
-  iny
-  lda (wordptr0),y
+  #next_char
   cmp #$30
   bmi _num_done ; < '0'
   cmp #$40
@@ -79,13 +69,78 @@ adc #$30
 jsr WriteCharacter
 lda #13
 jsr WriteCharacter
+  jmp parse
 
 _nan:
+_parse_label:
+  ldx #$1
+  sta stringbuf,x
+_next_char:
+  #next_char
+  cmp #$20 ; space
+  beq _label_done
+  cmp #13 ; newline
+  beq _label_done
+  inx
+  sta stringbuf,x
+  jmp _next_char
+_label_done:
+  inx
+  lda #$0
+  sta stringbuf,x
+  inx
+  stx stringbuf ; save total size
+txa
+clc
+adc #$30
+jsr WriteCharacter ; prints size
+  lda #<stringbuf
+  ldy #>stringbuf
+  jsr unique_string
+; Print string num
+txa
+adc #$30
+jsr WriteCharacter
+lda #13
+jsr WriteCharacter
   ;brk
   jmp parse
 
 
-; multiply wordptr1 by x, temporarily using wordptr2
+next_char .macro
+  iny
+;  tya
+;  cmp strlen ; because of size prefix, y = strlen+1, so this goes off at the first invalid char
+;  bne _read_char
+;  lda #13 ; newline
+;  jsr read_new_line
+;  jmp _done_reading
+_read_char
+  lda (wordptr0),y
+;jsr WriteCharacter
+_done_reading
+.endmacro
+
+; Read new line and set Y and strlen accordingly
+
+read_new_line:
+  jsr ReadLine
+
+; Line is returned as a length prefixed string pointed to by parameters 0 and 1
+; So copy that pointer to zero page so we can follow it
+  lda Parameters+0
+  sta wordptr0
+  lda Parameters+1
+  sta wordptr0+1
+
+; Store string length
+  ldy #$0
+  lda (wordptr0),y
+  sta strlen
+  rts
+
+; Multiply wordptr1 by x, temporarily using wordptr2
+
 multiply_by_x:
 ; clear target
   lda #$00

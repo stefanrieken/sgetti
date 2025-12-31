@@ -43,14 +43,21 @@ _next_ustring:
     jmp _compare_string ; and continue the comparison process
 _switch_to_stringmem:
     txa
-    cmp #NUM_FIXED_STRINGS-1 ; were we at end of fixed or dynamic string mem?
-    beq _new_ustring ; if the latter, append new string
-    lda #<stringmem  ; otherwise, switch to dynamic string mem and search again
+    cmp #NUM_FIXED_STRINGS ; were we at end of fixed or dynamic string mem?
+    bne _new_ustring ; if we are not at the exact border, we must be in the latter, so we can append new string
+
+    lda #<stringmem  ; problem is, x doesn't tell us whether we're at end of one or fresh start of other
+    cmp wordptr1+0   ; so instead, check if we just switched
+    bne _switch      ; and otherwise do it now
+    lda #>stringmem
+    cmp wordptr1+1
+    beq _new_ustring ; yes, we just switched; make new string
+_switch:
     sta wordptr1+0
     lda #>stringmem
     sta wordptr1+1
-    inx
     jmp _compare_string
+_hmmmm:              ; we had already switched
 _new_ustring:
     ; transfer from wordptr0 to wordptr1; zero terminated
     ldy #$FF
