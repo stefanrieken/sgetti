@@ -19,8 +19,27 @@
 
 ip = $17            ; technically in use on c64, but it's ours now
 tmp = $19           ; technically in use on c64, but it's ours now
-wordptr0 = $FB      ; c64: fully unused zero page address
-wordptr1 = $FD      ; c64: fully unused zero page address
+
+;
+; 4 Utility zero page registers.
+;
+wordptr0 = $02
+wordptr1 = $04
+wordptr2 = $06 ; currently the last two do not see active use as pointers
+wordptr3 = $08
+
+; The same registers when used in division
+
+remainder = wordptr0 ; divident is gradually left shifted into remainder & subtracted with corresponding divisor bit
+dividend  = wordptr1
+divisor   = wordptr2
+result    = wordptr3 ; could shift result into divisor, but a separate result saves maintaining a counter (register)
+
+; And when used in multiplication
+
+multiplier   = wordptr1
+multiplicand = wordptr2
+;result       = wordptr3
 
 ;
 ; Main engine

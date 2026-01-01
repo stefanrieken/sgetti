@@ -9,15 +9,12 @@ WriteCharacter = $fff1
 Parameters=$FF04
 
 strlen = $20
-wordptr2 = $22      ; c64: 'utility pointer area for the BASIC interpreter'
 
 init:
   lda #0
   sta stringmem
   ldx #$FF
   txs
-
-
 
 ; Parse code
 
@@ -41,9 +38,9 @@ _try_number:
 ; yes!
   sec
   sbc #$30
-  sta wordptr1  ; use wordptr1 for 2-byte number result
+  sta multiplicand  ; use multiplicand for 2-byte number result
   lda #$0
-  sta wordptr1+1
+  sta multiplicand+1
 _more_digits:
   #next_char
   cmp #$30
@@ -53,18 +50,20 @@ _more_digits:
   sec
   sbc #$30
   pha
-  ldx #10  ; for base 10
-  jsr multiply_by_x
+;  ldx #10  ; for base 10
+;  jsr multiply_by_x
+  lda #10  ; for base 10
+  jsr multiply_by_a
   pla  ; and add new digit
   clc
-  adc wordptr1
-  sta wordptr1
+  adc multiplicand
+  sta multiplicand
   bcc _more_digits
-  inc wordptr1
+  inc multiplicand
   jsr _more_digits
 _num_done:
-  lda wordptr1
-  clc
+lda multiplicand
+clc
 adc #$30
 jsr WriteCharacter
 lda #13
@@ -139,36 +138,46 @@ read_new_line:
   sta strlen
   rts
 
-; Multiply wordptr1 by x, temporarily using wordptr2
+; Invoke 'multiply' with 1-byte multiplier in a, and result copied back into multiplicand.
 
-multiply_by_x:
-; clear target
+multiply_by_a:
+  sta multiplier
   lda #$00
-  sta wordptr2
-  sta wordptr2+1
-_add_if_set:
-  and #$1
-  beq _shift_source
-  clc
-  lda wordptr1
-  adc wordptr2
-  sta wordptr2
-  lda wordptr1+1
-  adc wordptr2+1
-  sta wordptr2+1
-_shift_source:
-  asl wordptr1+1 ; msb: ignore overflow
-  asl wordptr1   ; lsb
-  bcc _shift_x
-  inc wordptr1   ; apply shift overlfow
-_shift_x:
-  txa
-  lsr a
-  tax
-  bne _add_if_set
-  lda wordptr2
-  sta wordptr1
-  lda wordptr2+1
-  sta wordptr1+1
+  sta multiplier+1
+  ldx #8
+  jsr multiply_x_bits ; a is max 8 bits wide
+  lda result
+  sta multiplicand
+  lda result+1
+  sta multiplicand+1
   rts
 
+; 16-bit multiply using (3 of) our 4 16-bit zero page registers
+; by their appropriate alias (multiplier, multiplicand, result)
+; Also uses x
+
+multiply:
+  ldx #$16      ; easier to just count max cycles than to determine whether 2-byte multiplier is fully shifted out
+multiply_x_bits ; target for a limited sized multiplier
+; clear target
+  lda #$00
+  sta result
+  sta result+1
+_next_bit_in_carry:
+  lsr multiplier+1
+  ror multiplier
+  bcc _shift_multiplicand
+_add_multiplicand:
+  clc
+  lda result
+  adc multiplicand
+  sta result
+  lda result+1
+  adc multiplicand+1
+  sta result+1
+_shift_multiplicand:
+  asl multiplicand
+  rol multiplicand+1
+  dex
+  bne _next_bit_in_carry
+  rts
