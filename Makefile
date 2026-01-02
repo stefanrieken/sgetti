@@ -1,8 +1,8 @@
-sgetti.bin: main.asm sgetti.asm uqstr.asm
+sgetti.bin: main.asm sgetti.asm uqstr.asm int.asm emit.asm
 	cat $^ > tmp.asm # overcome a multi file symbol retainment bug
 	64tass -Wall -C --nostart tmp.asm -o $@ -l labels.txt
 
-parse: parse.asm sgetti.asm uqstr.asm
+parse: parse.asm sgetti.asm uqstr.asm int.asm emit.asm
 	cat $^ > tmp.asm # overcome a multi file symbol retainment bug
 	64tass -Wall -C --nostart tmp.asm -o sgetti.bin -l labels.txt
 

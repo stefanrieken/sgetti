@@ -4,16 +4,16 @@ stringmem = $3000   ; any place in RAM for now
 
 ; UNIQUE_STRING
 ; - A,Y contain string pointer, then we set:
-; - wordptr0 = string to add
+; - arg1 = string to add
 ; - wordptr1 = used to index over string mem
-; - returns wordptr0 to unique string
+; - returns arg1 pointing to unique string
 ; - returns nth string in x
 
 unique_string:
     ldx #$0 ; using x as counter
     stx tmp ; use tmp to indicate whether we've switched from fixed to dynamic string mem
-    sta wordptr0      ; (if) wordptr0 is passed in A/Y, store its value in zero page so we can use it
-    sty wordptr0+1
+    sta arg1      ; (if) arg1 is passed in A/Y, store its value in zero page so we can use it
+    sty arg1+1
     ;lda #<stringmem   ; copy 16-bit pointer to start of strings
     lda #<fixed_strings   ; copy 16-bit pointer to start of strings
     sta wordptr1+0    ; for use as counter
@@ -29,7 +29,7 @@ _compare_chars:
     iny
     lda (wordptr1),y   ; compares both size indicator and content
     beq _done          ; zero terminator reached; since size is same, string is same!
-    cmp (wordptr0),y
+    cmp (arg1),y
     beq _compare_chars ; so far so same
 _next_ustring:
     inx ; using x as counter
@@ -52,22 +52,24 @@ _switch_to_stringmem:   ; switch from static to dynamic string memory
     inc tmp             ; keep track of switch in tmp
     bne _compare_string
 _new_ustring:
-    ; transfer from wordptr0 to wordptr1; zero terminated
-    inx ; using x as counter
+    ; transfer from arg1 to wordptr1; zero terminated
+;    inx ; using x as counter
     ldy #$FF
 _loop:
     iny
-    lda (wordptr0),y
+    lda (arg1),y
 ;jsr WriteCharacter
     sta (wordptr1),y
     bne _loop        ; if lda value was 0, then done copying string+terminator
     iny
     lda #$0
     sta (wordptr1),y ; zero terminate string chain
+;    iny
+;    sta (wordptr1),y ; zero terminate string chain
 _done:
     lda wordptr1     ; return pointer value where it is expected
-    sta wordptr0
+    sta arg1
     lda wordptr1+1
-    sta wordptr0+1
+    sta arg1+1
     rts              ; return to user
 

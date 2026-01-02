@@ -3,6 +3,7 @@
 *=$0800
 
 stringbuf=5000 ; arbitrarily chosen. Max 256 bytes
+progmem=6000   ; equally arbitrary
 
 ReadLine=$FFEB
 WriteCharacter = $fff1
@@ -13,18 +14,29 @@ strlen = $20
 init:
   lda #0
   sta stringmem
+  lda progmem
+  sta prgtop
+  lda progmem+1
+  sta prgtop+1
   ldx #$FF
   txs
 
+;
 ; Parse code
+;
+; Presently we can just parse either a number or a label
+; and provide some random feedback about it.
+;
 
 parse:
 
   jsr read_new_line
 
-clc
-adc #$30
-jsr WriteCharacter
+_parse_on:
+
+  tya
+  cmp strlen
+  bcs parse
 
   #next_char
 
@@ -50,10 +62,9 @@ _more_digits:
   sec
   sbc #$30
   pha
-;  ldx #10  ; for base 10
-;  jsr multiply_by_x
   lda #10  ; for base 10
-  jsr multiply_by_a
+  ldx #4   ; 10 is only 4 bits
+  jsr multiply_by_a_x_bits
   pla  ; and add new digit
   clc
   adc multiplicand
@@ -62,13 +73,21 @@ _more_digits:
   inc multiplicand
   jsr _more_digits
 _num_done:
+  lda #PRIM_PUSHB
+  jsr emit_optimized_cmd ; TODO totally untested
+
+; for demo / test purposes, divide input by 11
+lda #11
+jsr divide_by_a
+
 lda multiplicand
 clc
 adc #$30
 jsr WriteCharacter
 lda #13
 jsr WriteCharacter
-  jmp parse
+
+  jmp _parse_on
 
 _nan:
 _parse_label:
@@ -93,31 +112,37 @@ txa
 clc
 adc #$30
 jsr WriteCharacter ; prints size
+sbc #$30
+  tya ; unique_string affects y
+  pha ; so save y
   lda #<stringbuf
   ldy #>stringbuf
   jsr unique_string
+  pla ; restore y
+  tay
+; String can be variable ref or expression level primitive.
+; Since we have no vars yet, assume primitive. Push as idx+MAX_CORE
+  txa
+  clc
+
 ; Print string num
-txa
 adc #$30
 jsr WriteCharacter
+sbc #$30
+
+  adc #MAX_CORE
+  jsr emit_byte ; TODO totally untested
+
 lda #13
 jsr WriteCharacter
+
   ;brk
-  jmp parse
+  jmp _parse_on
 
 
 next_char .macro
   iny
-;  tya
-;  cmp strlen ; because of size prefix, y = strlen+1, so this goes off at the first invalid char
-;  bne _read_char
-;  lda #13 ; newline
-;  jsr read_new_line
-;  jmp _done_reading
-_read_char
-  lda (wordptr0),y
-;jsr WriteCharacter
-_done_reading
+  lda (lineptr),y
 .endmacro
 
 ; Read new line and set Y and strlen accordingly
@@ -128,56 +153,19 @@ read_new_line:
 ; Line is returned as a length prefixed string pointed to by parameters 0 and 1
 ; So copy that pointer to zero page so we can follow it
   lda Parameters+0
-  sta wordptr0
+  sta lineptr
   lda Parameters+1
-  sta wordptr0+1
+  sta lineptr+1
 
 ; Store string length
   ldy #$0
-  lda (wordptr0),y
+  lda (lineptr),y
   sta strlen
+
+clc
+adc #$30
+jsr WriteCharacter
+sbc #$30
+
   rts
 
-; Invoke 'multiply' with 1-byte multiplier in a, and result copied back into multiplicand.
-
-multiply_by_a:
-  sta multiplier
-  lda #$00
-  sta multiplier+1
-  ldx #8
-  jsr multiply_x_bits ; a is max 8 bits wide
-  lda result
-  sta multiplicand
-  lda result+1
-  sta multiplicand+1
-  rts
-
-; 16-bit multiply using (3 of) our 4 16-bit zero page registers
-; by their appropriate alias (multiplier, multiplicand, result)
-; Also uses x
-
-multiply:
-  ldx #$16      ; easier to just count max cycles than to determine whether 2-byte multiplier is fully shifted out
-multiply_x_bits ; target for a limited sized multiplier
-; clear target
-  lda #$00
-  sta result
-  sta result+1
-_next_bit_in_carry:
-  lsr multiplier+1
-  ror multiplier
-  bcc _shift_multiplicand
-_add_multiplicand:
-  clc
-  lda result
-  adc multiplicand
-  sta result
-  lda result+1
-  adc multiplicand+1
-  sta result+1
-_shift_multiplicand:
-  asl multiplicand
-  rol multiplicand+1
-  dex
-  bne _next_bit_in_carry
-  rts

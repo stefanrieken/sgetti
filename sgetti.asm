@@ -16,30 +16,33 @@
 ; - So need to copy over the target to a fixed (non-ZP) address first, then jump. (11-15 bytes)
 ; - Better: push address, then rts from it (7-9 bytes depending on zp use)
 
-
-ip = $17            ; technically in use on c64, but it's ours now
-tmp = $19           ; technically in use on c64, but it's ours now
-
 ;
-; 4 Utility zero page registers.
+; Utility zero page registers.
 ;
-wordptr0 = $02
-wordptr1 = $04
-wordptr2 = $06 ; currently the last two do not see active use as pointers
-wordptr3 = $08
+
+lineptr      = $02 ; The line being parsed
+prgtop       = $04 ; The top of program memory
+ip           = $06 ; The instructino pointer
+tmp          = $08 ; General purpose temp
+
+wordptr0     = $0A ; General use word / pointer size address
+wordptr1     = $0C ; General use word / pointer size address
+arg1         = $0E ; First argument (let's count these from 1)
+arg2         = $10 ; Second argument
+result       = $12 ; Result -- often gets copied back to arg1
 
 ; The same registers when used in division
-
-remainder = wordptr0 ; divident is gradually left shifted into remainder & subtracted with corresponding divisor bit
-dividend  = wordptr1
-divisor   = wordptr2
-result    = wordptr3 ; could shift result into divisor, but a separate result saves maintaining a counter (register)
+remainder    = wordptr1 ; divident is gradually left shifted into remainder & subtracted with corresponding divisor bit
+dividend     = arg1
+divisor      = arg2
+;result      = result
 
 ; And when used in multiplication
+multiplicand = arg1
+multiplier   = arg2
+;result      = result
 
-multiplier   = wordptr1
-multiplicand = wordptr2
-;result       = wordptr3
+
 
 ;
 ; Main engine
