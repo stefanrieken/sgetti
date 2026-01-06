@@ -25,14 +25,13 @@ prgtop       = $04 ; The top of program memory
 ip           = $06 ; The instruction pointer
 tmp          = $08 ; General purpose temp
 
-wordptr0     = $0A ; General use word / pointer size address (TODO phased out in favour of arg1 / arg2)
-wordptr1     = $0C ; General use word / pointer size address (TODO phased out in favour of arg1 / arg2)
-arg1         = $0E ; First argument (let's count these from 1)
-arg2         = $10 ; Second argument
-result       = $12 ; Result -- often gets copied back to arg1
+result2      = $0A 
+arg1         = $0C ; First argument (let's count these from 1)
+arg2         = $0E ; Second argument
+result       = $10 ; Result -- often gets copied back to arg1
 
 ; The same registers when used in division
-remainder    = wordptr1 ; divident is gradually left shifted into remainder & subtracted with corresponding divisor bit
+remainder    = result2; divident is gradually left shifted into remainder & subtracted with corresponding divisor bit
 dividend     = arg1
 divisor      = arg2
 ;result      = result
