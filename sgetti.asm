@@ -142,21 +142,29 @@ jsr WriteCharacter
   jmp thread_loop
 
 print: ; print a unique_string or similarly formatted string
+  tya ; stash return sp
+  pha
+  lsr tmp ; restore num args
+  dec tmp
+_print_next_str:
   jsr stack_x_to_wordptr0
-  #clear_stack_from_y_via_ax
-;#neo6502_breakpoint
   ldy #0
   lda (wordptr0),y  ; load size of string in A
-  beq _done         ; string size zero = terminator?
+  beq _str_done     ; string size zero = terminator?
 _loop:
     iny               ; next character
     lda (wordptr0),y  ; load character value
-    beq _done         ; zero terminated
+    beq _str_done     ; zero terminated
     jsr WriteCharacter
     bne _loop         ; = unconditional jump
-_done:
+_str_done:
+    dec tmp
+    bne _print_next_str
     lda #13
     jsr WriteCharacter
+    pla ; clear stack from pushed sp
+    tax
+    txs
     jmp thread_loop
   
 

@@ -85,9 +85,10 @@ Sgetti can currently evaluate primitive-based expressions and compiles with the
 neo6502 emulator as a target (see the `run` Makefile target for details).
 
 Once running in the emulator, you can type `print "Hello, World!"` and even
-expect the outcome to be as predictable. It is even possible to write semicolon
-separated statements:
+expect the outcome to be as predictable. It is even possible to write some
+early variations:
 
         print "hello"; print "world"
+        print "hello " "world"
 
-That's all for now.
+That's it for now.
