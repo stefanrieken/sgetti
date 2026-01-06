@@ -2,8 +2,8 @@
 
 *=$0800
 
-stringbuf=5000 ; arbitrarily chosen. Max 256 bytes
-progmem=6000   ; equally arbitrary
+stringbuf=$5000 ; arbitrarily chosen. Max 256 bytes
+progmem=$6000   ; equally arbitrary
 
 ReadLine=$FFEB
 WriteCharacter = $fff1
@@ -14,10 +14,12 @@ strlen = $20
 init:
   lda #0
   sta stringmem
-  lda progmem
+  lda #<progmem
   sta prgtop
-  lda progmem+1
+  sta ip
+  lda #>progmem
   sta prgtop+1
+  sta ip+1
   ldx #$FF
   txs
 
@@ -29,19 +31,77 @@ init:
 ;
 
 parse:
+  lda #$FF ; Count args per subexpr on stack
+  pha      ; Start with -1 so we can start with an increment
 
   jsr read_new_line
 
 _parse_on:
+  pla      ; increment num args
+  clc
+  adc #1
+  pha
 
-  tya
+_next_char:
+  ; test for end of line
+  tya      ; TODO do not hold y hostage for full REPL loop
   cmp strlen
-  bcs parse
+  bcc _no_eol
+;bcs _parse_new_line
+
+_eval:
+  pla       ; pull n args
+  sta arg1
+  ldx #PRIM_EVAL
+  jsr emit_byte_cmd
+  ; Temporarily append 'done'
+  ldx #PRIM_DONE
+  jsr emit_byte
+  tya
+  pha
+  jsr thread_loop ; Run expression
+  pla
+  tay
+  ; Remove result from stack (TODO return a result; TODO show result)
+  ; so we get back to our arg counting
+;  pla
+;  pla
+  ; Then remove 'done' so that any later code is appended into one program
+  lda prgtop
+  sec
+  sbc #1
+  sta prgtop
+  sta ip
+  bcs +
+  lda prgtop+1
+  sbc #1
+  sta prgtop
+  sta ip
++
+  ; And start new round
+  tsx
+;#neo6502_breakpoint
+  jmp parse
+
+_no_eol:
 
   #next_char
 
 _switch_on_first_char:
 
+_skip_whitespace:
+  cmp #$20
+  beq _next_char
+_try_sep:
+  cmp #$3B ; ';'
+  bne _try_number
+  pla       ; pull n args
+  sta arg1
+  ldx #PRIM_EVAL
+  jsr emit_byte_cmd
+  lda #0  ; start new arg count
+  pha
+  jmp _next_char
 _try_number:
   cmp #$30
   bmi _nan ; < '0'
@@ -73,8 +133,8 @@ _more_digits:
   inc multiplicand
   jsr _more_digits
 _num_done:
-  lda #PRIM_PUSHB
-  jsr emit_optimized_cmd ; TODO totally untested
+  ldx #PRIM_PUSHB
+  jsr emit_optimized_cmd
 
 ; for demo / test purposes, divide input by 11
 lda #11
@@ -90,12 +150,49 @@ jsr WriteCharacter
   jmp _parse_on
 
 _nan:
+
+_parse_string:
+  cmp #$22         ; '"'
+  bne _parse_label ; if not a string, then a label
+  sta tmp          ; store quote to signal string
+  #next_char
+  jsr parse_string_or_label
+;  #next_char ; skip closing '"'
+  ldx #PRIM_STRB
+  jsr emit_optimized_cmd
+  ;brk
+  jmp _parse_on ; discard closing '"' that was already parsed
+
 _parse_label:
+  ldx #$20        ; space delimits label
+  stx tmp
+  jsr parse_string_or_label
+  txa             ; x contains unique string index
+  clc
+  adc #MAX_CORE+1 ; assuming valid prim, adjust to jump table offset
+;clc
+;adc #$30
+;jsr WriteCharacter
+;sec
+;sbc #$30
+  tax
+  jsr emit_byte
+  ;brk
+  jmp _parse_on ; note that we discard the separating space. If we start to allow functional chars to separarate, don't discard these
+
+
+;
+; Parse string or label
+;
+; Pass end char in tmp
+; Return values as defined by unique_string
+
+parse_string_or_label:
   ldx #$1
   sta stringbuf,x
 _next_char:
   #next_char
-  cmp #$20 ; space
+  cmp tmp ; either quote or space
   beq _label_done
   cmp #13 ; newline
   beq _label_done
@@ -108,11 +205,13 @@ _label_done:
   sta stringbuf,x
   inx
   stx stringbuf ; save total size
-txa
-clc
-adc #$30
-jsr WriteCharacter ; prints size
-sbc #$30
+; Debug total size
+;txa
+;clc
+;adc #$30
+;jsr WriteCharacter ; prints size
+;sec
+;sbc #$30
   tya ; unique_string affects y
   pha ; so save y
   lda #<stringbuf
@@ -125,24 +224,17 @@ sbc #$30
   txa
   clc
 
-; Print string num
-adc #$30
-jsr WriteCharacter
-sbc #$30
+; Debug string num
+;adc #$30
+;jsr WriteCharacter
+;sbc #$30
 
-  adc #MAX_CORE
-  jsr emit_byte ; TODO totally untested
-
-lda #13
-jsr WriteCharacter
-
-  ;brk
-  jmp _parse_on
-
+  rts
 
 next_char .macro
   iny
   lda (lineptr),y
+;jsr WriteCharacter
 .endmacro
 
 ; Read new line and set Y and strlen accordingly
@@ -162,10 +254,12 @@ read_new_line:
   lda (lineptr),y
   sta strlen
 
-clc
-adc #$30
-jsr WriteCharacter
-sbc #$30
+; Debug string length (as offset from ASCII character '0')
+;clc
+;adc #$30
+;jsr WriteCharacter
+;sec
+;sbc #$30
 
   rts
 

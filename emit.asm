@@ -2,56 +2,70 @@
 ; Emit either a byte-sized or word-sized variant of the same command,
 ; assuming they come in that order, e.g. PUSHB before PUSHW.
 ; Call with byte variant.
-
+;
+; cmd arg is in x; caller's y actively is preserved
+;
 ; TODO test all
 
 emit_optimized_cmd:
 
-  ldx arg1+1      ; is msb zero?
-  beq emit_byte   ; then emit the byte sized variant
+  lda arg1+1        ; is msb zero?
+  beq emit_byte_cmd ; then emit the byte sized variant
 
 emit_word_cmd:
 
-  clc             ; clear carry to mark we're emitting 2 bytes
-  adc #1          ; cmd+1 for word sized variant; should not change carry
-  bcc do_emit_cmd ; always taken
+  clc               ; clear carry to mark we're emitting 2 bytes
+  inx               ; cmd+1 for word sized variant; should not change carry
+  bcc do_emit_cmd   ; always taken
 
 emit_byte_cmd:
-  sec             ; mark 1 byte
+  sec               ; mark 1 byte
 
 do_emit_cmd:
-  sta prgtop,x
-
-  ldx #1          ; count num bytes added
+  tya               ; save caller's y
+  pha
+  txa               ; load command
+  ldy #0            ; count program bytes in y
+  sta (prgtop),y
+  iny
 
 _add_arg:
   lda arg1
-  sta prgtop,x
-  inx
+  sta (prgtop),y
+  iny
 
   bcs _update_prgtop ; carry set marks 1-byte variant, so skip msb
 
   lda arg1+1
-  sta prgtop,x
-  inx
+  sta (prgtop),y
+  iny
 
 _update_prgtop:
-  txa
+  tya
   clc
   adc prgtop
+  sta prgtop
   bcc _done
   inc prgtop+1
 _done:
+  pla               ; restore caller's y
+  tay
   rts
 
 
 ; Emit a single byte (possibly an expression level primitive)
-; value in A
+; value in x
 emit_byte:
-  sta prgtop
+  tya               ; save caller's y
+  pha
+  ldy #0
+  txa
+  sta (prgtop),y
   inc prgtop
-  bcc _done
+  bne _done
   inc prgtop+1
 _done:
+  pla               ; restore caller's y
+  tay
   rts
 

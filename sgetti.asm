@@ -22,7 +22,7 @@
 
 lineptr      = $02 ; The line being parsed
 prgtop       = $04 ; The top of program memory
-ip           = $06 ; The instructino pointer
+ip           = $06 ; The instruction pointer
 tmp          = $08 ; General purpose temp
 
 wordptr0     = $0A ; General use word / pointer size address
@@ -43,38 +43,43 @@ multiplier   = arg2
 ;result      = result
 
 
+neo6502_breakpoint .macro
+.byte 3
+.endmacro
 
 ;
 ; Main engine
 ;
 
 thread_loop:
-  jsr fetch_into_y ; consider in-lining this code here to win back 12 cycles in main loop
+  jsr next_byte ; consider in-lining this code here to win back 12 cycles in main loop
 _perform_instr:
-  lda jumptable_msb,y ; to support full 256 instrs, use separate page for jumptable lsb / msb
+  tay
+  lda jumptable_msb,y ; to potentially support full 256 instrs, use separate page for jumptable lsb / msb
   pha
-  lda jumptable_lsb,y
+  lda jumptable_lsb,y ; (may also try to keep all jumps on one page so that msb is always the same)
   pha
 _test_if_core:
   tya
-  cmp #MAX_CORE   ; is prim > max core prim?
-  bpl thread_loop ; then only push non-core prim; leave eval to 'eval n'
-  rts ; jumps to pushed address MINUS ONE; so adjust core jump table accordingly
+  cmp #MAX_CORE+1   ; is prim > max core prim?
+  bcs thread_loop ; then only push this expression level primitive; leave eval to 'eval n'
+  rts ; use RTS to actually JMP to primitive code MINUS ONE; so adjust core jump table accordingly
 
-; Used both by main threadloop and by primitives to fetch data.
-; The Y register appears useful in both cases, so you get the final TAY as a freebie.
-fetch_into_y:
-_fetch_instr:
+  ; All primitives should return by jumping to thread_loop.
+  ; If not, this value triggers the monitor in the neo6502 emulator:
+  #neo6502_breakpoint
+
+; Get next byte from ip++
+; Uses y
+next_byte:
   ldy #$00
   lda (ip),y
-  tay
 _incr_ip:
   inc ip
   bne _done ; if circled back to zero, increment msb as well
   inc ip+1
 _done:
   rts
-  
 
 ;
 ; Primitives
@@ -86,46 +91,45 @@ push0:
   pha
   jmp thread_loop
 push1:
-  ldy #$1
-  bne push_byte_in_y
+  ldx #$1
+  bne push_byte_in_x
 push_byte:
-  jsr fetch_into_y ; then fall through:
-push_byte_in_y:
+  jsr next_byte ; then fall through:
+  tax
+push_byte_in_x:
   lda #$00 ; empty msb, then fall through:
-push_word_in_y_a:
+push_word_in_x_a:
   pha ; msb
-  tya ; lsb is pushed last so as to be pulled first
+  txa ; lsb is pushed last so that it is pulled first
   pha
   jmp thread_loop
 push_word:
-  jsr fetch_into_y ; also into a
+  jsr next_byte
   tax ; keep lsb safe in x
-  jsr fetch_into_y ; also into a
+  jsr next_byte
   pha ; push msb first
   txa
   pha ; push lsb last
   jmp thread_loop
 eval:
 _calc_fp:
-  jsr fetch_into_y ; num of 2-byte stack items to eval; also fetched into a
-  tsx
-  clc
-; arg $2000 is at sp-2*2; arg $42 is at sp-1*2; so pointer should be at sp-3*2
+  jsr next_byte; num of 2-byte stack items to eval; also fetched into a
   sta tmp
   asl tmp ; tmp = arg count * 2 bytes
-  txa ; a now holds (original) end of arg stack
+  tsx
+  txa
   clc
   adc tmp ; a now holds 'frame pointer', i.e. start of args on stack (stack goes down, so A is higher)
 _do_eval:
-  tax
-  jsr stack_x_to_wordptr0
-  ; a now holds frame pointer; x next arg; y (still) holds arg count
+  tay ; y now holds 'frame pointer'
+  tax ; x holds same value, but is walked as argument index
+  jsr stack_x_to_wordptr0 ; fetch first argument (the primitive to call)
   jmp(wordptr0) ; jump to primitive
 done:
+;#neo6502_breakpoint
   rts ; to exit thread loop by returning to whoever called us
 
 setb: ; 'setb $1234 42'
-  tay ; save fp in y
   jsr stack_x_to_wordptr0
 ;  lda $0100,x  ; setb only uses lsb of value
   dex
@@ -138,9 +142,9 @@ jsr WriteCharacter
   jmp thread_loop
 
 print: ; print a unique_string or similarly formatted string
-  tay ; save fp in y
   jsr stack_x_to_wordptr0
   #clear_stack_from_y_via_ax
+;#neo6502_breakpoint
   ldy #0
   lda (wordptr0),y  ; load size of string in A
   beq _done         ; string size zero = terminator?
@@ -151,8 +155,8 @@ _loop:
     jsr WriteCharacter
     bne _loop         ; = unconditional jump
 _done:
-;lda #$41
-;jsr WriteCharacter
+    lda #13
+    jsr WriteCharacter
     jmp thread_loop
   
 
@@ -172,19 +176,21 @@ stack_x_to_wordptr0:
   rts
 
 clear_stack_from_y_via_ax .macro
-;  dey
-;  dey
+  ;dey
+  ;dey
+;#neo6502_breakpoint
+;  iny
   tya ; y contains 'frame pointer' == base stack
   tax ; ...move it the long way around...
   txs ; to set stack size to before expression
 .endmacro
 
-; Because we jump into core prims by means of rts, we need address minus one
+; Because we jump into core prims by means of rts, these need address minus one
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
-  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <eval-1, <done-1, <setb, <print
+  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <eval-1, <done-1, <setb, <print
 jumptable_msb:
-  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >eval-1, >done-1, >setb, >print
+  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >eval-1, >done-1, >setb, >print
 
 fixed_strings:
   .text 6, "setb", 0
@@ -192,11 +198,15 @@ fixed_strings:
 
 NUM_FIXED_STRINGS=2
 
+PRIM_PUSH0=0
+PRIM_PUSH1=1
 PRIM_PUSHB=2
 PRIM_PUSHW=3
-PRIM_EVAL=4
-PRIM_DONE=5
-PRIM_SETB=6
-PRIM_PRINT=7
-MAX_CORE=5
+PRIM_STRB=4
+PRIM_STRW=5
+PRIM_EVAL=6
+PRIM_DONE=7
+PRIM_SETB=8
+PRIM_PRINT=9
+MAX_CORE=7
 

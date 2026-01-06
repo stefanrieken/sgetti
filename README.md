@@ -81,11 +81,13 @@ A hack known as the 'RTS Trick'
 
 
 ## Current state
-Sgetti can currently evaluate pre-compiled expressions and compiles with the
+Sgetti can currently evaluate primitive-based expressions and compiles with the
 neo6502 emulator as a target (see the `run` Makefile target for details).
 
-The demo program will write a "Hello, World" style message on the screen.
-A second program (see main.asm) will write (`setb`) the value `42` in memory
-address `$2000`. This can be checked by running `print peek(8192)` from
-(neo6502) Basic.
+Once running in the emulator, you can type `print "Hello, World!"` and even
+expect the outcome to be as predictable. It is even possible to write semicolon
+separated statements:
 
+        print "hello"; print "world"
+
+That's all for now.

@@ -1,3 +1,5 @@
+; Test that the interpreter can run a fixed program.
+
 ; Currently made to compile for neo6502 with 64tass --nostart
 ; Run on emulator by writing neo6502-firmware/bin/neo a.out@800 cold
 
