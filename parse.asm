@@ -62,11 +62,9 @@ _eval:
   jsr thread_loop ; Run expression
   pla
   tay
-  ; Remove result from stack (TODO return a result; TODO show result)
-  ; so we get back to our arg counting
-;  pla
-;  pla
-  ; Then remove 'done' so that any later code is appended into one program
+  ; TODO print arg1 as result value
+
+  ; Remove 'done' so that any later code is appended into one program
   lda prgtop
   sec
   sbc #1

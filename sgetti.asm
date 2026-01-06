@@ -25,8 +25,8 @@ prgtop       = $04 ; The top of program memory
 ip           = $06 ; The instruction pointer
 tmp          = $08 ; General purpose temp
 
-wordptr0     = $0A ; General use word / pointer size address
-wordptr1     = $0C ; General use word / pointer size address
+wordptr0     = $0A ; General use word / pointer size address (TODO phased out in favour of arg1 / arg2)
+wordptr1     = $0C ; General use word / pointer size address (TODO phased out in favour of arg1 / arg2)
 arg1         = $0E ; First argument (let's count these from 1)
 arg2         = $10 ; Second argument
 result       = $12 ; Result -- often gets copied back to arg1
@@ -91,7 +91,7 @@ push0:
   pha
   jmp thread_loop
 push1:
-  ldx #$1
+  lda #$1
   bne push_byte_in_x
 push_byte:
   jsr next_byte ; then fall through:
@@ -113,7 +113,7 @@ push_word:
   jmp thread_loop
 eval:
 _calc_fp:
-  jsr next_byte; num of 2-byte stack items to eval; also fetched into a
+  jsr next_byte; load num of 2-byte stack items to eval
   sta tmp
   asl tmp ; tmp = arg count * 2 bytes
   tsx
@@ -123,22 +123,23 @@ _calc_fp:
 _do_eval:
   tay ; y now holds 'frame pointer'
   tax ; x holds same value, but is walked as argument index
-  jsr stack_x_to_wordptr0 ; fetch first argument (the primitive to call)
-  jmp(wordptr0) ; jump to primitive
+  jsr stack_x_to_arg1 ; fetch first argument (the primitive to call)
+  jmp(arg1) ; jump to primitive
 done:
-;#neo6502_breakpoint
   rts ; to exit thread loop by returning to whoever called us
 
 setb: ; 'setb $1234 42'
-  jsr stack_x_to_wordptr0
-;  lda $0100,x  ; setb only uses lsb of value
+  jsr stack_x_to_arg1
   dex
   lda $0100,x  ; setb only uses lsb of value
   dex
 jsr WriteCharacter
   #clear_stack_from_y_via_ax
   ldx #$00
-  sta (wordptr0,x) ; and perform stack 
+  sta (arg1,x) ; and perform setb
+  sta arg1     ; return the byte value in arg1
+  lda #$0
+  sta arg1+1
   jmp thread_loop
 
 print: ; print a unique_string or similarly formatted string
@@ -147,47 +148,46 @@ print: ; print a unique_string or similarly formatted string
   lsr tmp ; restore num args
   dec tmp
 _print_next_str:
-  jsr stack_x_to_wordptr0
+  jsr stack_x_to_arg1
   ldy #0
-  lda (wordptr0),y  ; load size of string in A
+  lda (arg1),y  ; load size of string in A
   beq _str_done     ; string size zero = terminator?
 _loop:
-    iny               ; next character
-    lda (wordptr0),y  ; load character value
-    beq _str_done     ; zero terminated
-    jsr WriteCharacter
-    bne _loop         ; = unconditional jump
+  iny               ; next character
+  lda (arg1),y  ; load character value
+  beq _str_done     ; zero terminated
+  jsr WriteCharacter
+  bne _loop         ; = unconditional jump
 _str_done:
-    dec tmp
-    bne _print_next_str
-    lda #13
-    jsr WriteCharacter
-    pla ; clear stack from pushed sp
-    tax
-    txs
-    jmp thread_loop
+  dec tmp
+  bne _print_next_str
+  lda #13
+  jsr WriteCharacter
+  pla ; clear stack from pushed sp
+  tax
+  txs
+  lda #0
+  sta arg1
+  sta arg1+1 ; return 0 (return values need not be pushed unless at end of block / subexpr)
+  jmp thread_loop
   
 
-; store word on stack,x into wordptr0
+; store word on stack,x into arg1
 ; and decrement x
-stack_x_to_wordptr0:
+stack_x_to_arg1:
   lda $0100,x
-  sta wordptr0+1
+  sta arg1+1
 ;adc #$30
 ;jsr WriteCharacter
   dex
   lda $0100,x
-  sta wordptr0
+  sta arg1
 ;adc #$30
 ;jsr WriteCharacter
   dex
   rts
 
 clear_stack_from_y_via_ax .macro
-  ;dey
-  ;dey
-;#neo6502_breakpoint
-;  iny
   tya ; y contains 'frame pointer' == base stack
   tax ; ...move it the long way around...
   txs ; to set stack size to before expression
