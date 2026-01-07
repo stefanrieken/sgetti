@@ -64,7 +64,7 @@ NOTE: no compiler yet!
 
 ## 6502 Specific Challenges
 The 6502 is essentially the BASIC language of processors: simple, but often
-lacking the basic constructs to also be even near to elegant.
+lacking the essential constructs required to be anything close to elegant.
 
 Even with the period appropriate solution of threaded code, we still face very
 basic challenges, like the 6502 not having the required indexed jumps.
@@ -73,12 +73,6 @@ Instead, we need to copy over the target address to a fixed address first, then
 jump from the latter. This alone takes up between 13-15 bytes. An alternative
 construct called the 'RTS Trick' pushes the target address _minus one_ to the
 stack, and then calls `rts`, reducing the code to 9 bytes.
-
-A hack known as the 'RTS Trick'
- (11-15 bytes)
-- Better still: push address, then rts from it (7-9 bytes depending on zp use)
-  - Note: RTS requires address-1
-
 
 ## Current state
 Sgetti can currently evaluate primitive-based expressions and compiles with the
@@ -90,5 +84,12 @@ early variations:
 
         print "hello"; print "world"
         print "hello " "world"
+
+The `return` statement (Pasta style: return argument as expression result) can
+also be tried, for instance to show off hexadecimal support. Finally there is
+`setb`, which is Pasta's equivalent of `poke`:
+
+        return 0x2a
+        setb 0x3800 42
 
 That's it for now.

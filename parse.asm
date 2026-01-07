@@ -2,8 +2,9 @@
 
 *=$0800
 
-stringbuf=$5000 ; arbitrarily chosen. Max 256 bytes
-progmem=$6000   ; equally arbitrary
+linebuf=$0200   ; Say where ReadLine puts its results
+stringbuf=$0300 ; Max 256 bytes
+progmem=$6000   ; Arbitratily chosen
 
 ReadLine=$FFEB
 WriteCharacter = $fff1
@@ -36,20 +37,23 @@ parse:
 
   jsr read_new_line
 
-_parse_on:
-  pla      ; increment num args
+_next_char:
+  #next_char
+_have_char:  ; jump here if your last char may be the first of another arg
+  tax
+; increment num args
+  pla        ; increment num args
   clc
   adc #1
   pha
-
-_next_char:
-  ; test for end of line
-  tya      ; TODO do not hold y hostage for full REPL loop
+; test for end of line
+  tya       ; TODO do not hold y hostage for full REPL loop
   cmp strlen
+  txa
   bcc _no_eol
-;bcs _parse_new_line
 
 _eval:
+;#neo6502_breakpoint
   pla       ; pull n args
   sta arg1
   ldx #PRIM_EVAL
@@ -60,10 +64,9 @@ _eval:
   tya
   pha
   jsr thread_loop ; Run expression
+  jsr print_repl_result
   pla
   tay
-  ; TODO print arg1 as result value
-
   ; Remove 'done' so that any later code is appended into one program
   lda prgtop
   sec
@@ -83,45 +86,68 @@ _eval:
 
 _no_eol:
 
-  #next_char
-
 _switch_on_first_char:
 
 _skip_whitespace:
   cmp #$20
-  beq _next_char
+  bne _try_sep
+  #next_char
+  jmp _skip_whitespace
 _try_sep:
-  cmp #$3B ; ';'
+  cmp #';'
   bne _try_number
   pla       ; pull n args
   sta arg1
   ldx #PRIM_EVAL
   jsr emit_byte_cmd
-  lda #0  ; start new arg count
+  lda #$FF  ; start new arg count
   pha
   jmp _next_char
 _try_number:
-  cmp #$30
-  bmi _nan ; < '0'
-  cmp #$40
-  bpl _nan ; > '9'
+  cmp #'0'
+  bcc _nan ; < '0'
+  cmp #'9'+1
+  bcs _nan ; > '9'
 ; yes!
   sec
-  sbc #$30
-  sta multiplicand  ; use multiplicand for 2-byte number result
-  lda #$0
-  sta multiplicand+1
+  sbc #'0'
+  sta multiplicand   ; use multiplicand for 2-byte number result
+  ldx #0             ; switch to x to preserve digit a bit longer
+  stx multiplicand+1
+  ldx #10
+  stx tmp            ; default base 10
+  cmp #0             ; was given digit zero?
+  bne _more_digits   ; if not, don't expect '0x'
+  #next_char
+  cmp #'x' ; hex indicator; TODO only trigger on zero and also accept inputs a-f
+  bne +
+  lda #16
+  sta tmp
 _more_digits:
   #next_char
-  cmp #$30
-  bmi _num_done ; < '0'
-  cmp #$40
-  bpl _num_done ; > '9'
++
+  cmp #'0'
+  bcc _num_done ; < '0'
+  cmp #'9'+1
+  bcc _done_adjusting
+  cmp #'a'
+  bcc _try_uppercase  ; if < 'a'
+  sbc #$20            ; adjust to uppercase
+_try_uppercase:
+  cmp #'A'
+  bcc _num_done
+  cmp #'Z'+1          ; should realistically be 'F', but hey, we may support other bases some day
+  bcs _num_done       ; not even in A-Z
   sec
-  sbc #$30
+  sbc #7              ; make 'A'..'Z' go next to '9'
+_done_adjusting:
+  sec
+  sbc #'0'            ; now make it numeric
+  cmp tmp             ; digit < base?
+  bcs _num_done       ; if not, it's not a valid digit
   pha
-  lda #10  ; for base 10
-  ldx #4   ; 10 is only 4 bits
+  lda tmp  ; load base
+  ldx #5   ; max = base 16 = 5 bits
   jsr multiply_by_a_x_bits
   pla  ; and add new digit
   clc
@@ -129,23 +155,12 @@ _more_digits:
   sta multiplicand
   bcc _more_digits
   inc multiplicand
-  jsr _more_digits
+  bcs _more_digits ; always taken
 _num_done:
   ldx #PRIM_PUSHB
   jsr emit_optimized_cmd
-
-; for demo / test purposes, divide input by 11
-lda #11
-jsr divide_by_a
-
-lda multiplicand
-clc
-adc #$30
-jsr WriteCharacter
-lda #13
-jsr WriteCharacter
-
-  jmp _parse_on
+  dey              ; we kind of messed up the last non-digit char, but this is an easy fix
+  jmp _next_char
 
 _nan:
 
@@ -158,15 +173,18 @@ _parse_string:
 ;  #next_char ; skip closing '"'
   ldx #PRIM_STRB
   jsr emit_optimized_cmd
-  ;brk
-  jmp _parse_on ; discard closing '"' that was already parsed
+  jmp _next_char ; discard closing '"' that was already parsed
 
 _parse_label:
   ldx #$20        ; space delimits label
   stx tmp
   jsr parse_string_or_label
   txa             ; x contains unique string index
-  clc
+  cmp #NUM_FIXED_STRINGS
+  bcc _valid
+  jsr syntax_error ; TODO retract emitted values in this line
+  jmp parse
+_valid:
   adc #MAX_CORE+1 ; assuming valid prim, adjust to jump table offset
 ;clc
 ;adc #$30
@@ -175,9 +193,7 @@ _parse_label:
 ;sbc #$30
   tax
   jsr emit_byte
-  ;brk
-  jmp _parse_on ; note that we discard the separating space. If we start to allow functional chars to separarate, don't discard these
-
+  jmp _next_char ; discard delimiting space
 
 ;
 ; Parse string or label
@@ -220,11 +236,12 @@ _label_done:
 ; String can be variable ref or expression level primitive.
 ; Since we have no vars yet, assume primitive. Push as idx+MAX_CORE
   txa
-  clc
 
 ; Debug string num
+;clc
 ;adc #$30
 ;jsr WriteCharacter
+;sec
 ;sbc #$30
 
   rts
@@ -238,6 +255,9 @@ next_char .macro
 ; Read new line and set Y and strlen accordingly
 
 read_new_line:
+  ; Apparently we define where the input comes using x, y.
+  ldx #<linebuf
+  ldy #>linebuf
   jsr ReadLine
 
 ; Line is returned as a length prefixed string pointed to by parameters 0 and 1
@@ -250,8 +270,9 @@ read_new_line:
 ; Store string length
   ldy #$0
   lda (lineptr),y
+  clc
+  adc #1
   sta strlen
-
 ; Debug string length (as offset from ASCII character '0')
 ;clc
 ;adc #$30

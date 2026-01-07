@@ -4,11 +4,8 @@
 ; Call with byte variant.
 ;
 ; cmd arg is in x; caller's y actively is preserved
-;
-; TODO test all
 
 emit_optimized_cmd:
-
   lda arg1+1        ; is msb zero?
   beq emit_byte_cmd ; then emit the byte sized variant
 

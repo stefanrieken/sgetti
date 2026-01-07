@@ -71,7 +71,7 @@ _test_if_core:
 ; Get next byte from ip++
 ; Uses y
 next_byte:
-  ldy #$00
+  ldy #0
   lda (ip),y
 _incr_ip:
   inc ip
@@ -120,34 +120,58 @@ _calc_fp:
   clc
   adc tmp ; a now holds 'frame pointer', i.e. start of args on stack (stack goes down, so A is higher)
 _do_eval:
-  tay ; y now holds 'frame pointer'
-  tax ; x holds same value, but is walked as argument index
-  jsr stack_x_to_arg1 ; fetch first argument (the primitive to call)
+  tax ; x now holds 'frame pointer'
+  tay ; y holds same value, but is walked as argument index
+  jsr stack_y_to_arg1 ; fetch first argument (the primitive to call)
   jmp(arg1) ; jump to primitive
 done:
-  rts ; to exit thread loop by returning to whoever called us
-
-setb: ; 'setb $1234 42'
-  jsr stack_x_to_arg1
-  dex
-  lda $0100,x  ; setb only uses lsb of value
-  dex
-jsr WriteCharacter
-  #clear_stack_from_y_via_ax
-  ldx #$00
-  sta (arg1,x) ; and perform setb
+  rts   ; to exit thread loop by returning to whoever called us
+return: ; in the Pasta sense of returning the argument value as expression outcome
+  jsr stack_y_to_arg1
+  txs ; restore stack
+  jmp thread_loop
+setb: ; 'setb 0x1234 42'
+  jsr stack_y_to_arg1
+  dey
+  lda $0100,y ; setb only uses lsb of value
+  dey
+;jsr WriteCharacter
+  ldy #0
+  sta (arg1),y ; and perform set
+  ; done, now prepare return value in arg1
   sta arg1     ; return the byte value in arg1
-  lda #$0
-  sta arg1+1
+  sty arg1+1
+  txs ; restore stack
   jmp thread_loop
 
 print: ; print a unique_string or similarly formatted string
-  tya ; stash return sp
-  pha
   lsr tmp ; restore num args
   dec tmp
 _print_next_str:
-  jsr stack_x_to_arg1
+  jsr stack_y_to_arg1
+  tya
+  pha ; stash arg counter
+  jsr print_arg1
+  pla ; restore arg counter
+  tay
+  dec tmp
+  bne _print_next_str
+  lda #13
+  jsr WriteCharacter
+  txs ; restore stack
+  lda #0
+  sta arg1
+  sta arg1+1 ; return 0 (return values need not be pushed unless at end of block / subexpr)
+  jmp thread_loop
+
+; utility callable versions of print
+syntax_error:
+  lda #<stx_err
+  ldx #>stx_err
+print_ax:
+  sta arg1
+  stx arg1+1
+print_arg1:
   ldy #0
   lda (arg1),y  ; load size of string in A
   beq _str_done     ; string size zero = terminator?
@@ -158,52 +182,38 @@ _loop:
   jsr WriteCharacter
   bne _loop         ; = unconditional jump
 _str_done:
-  dec tmp
-  bne _print_next_str
-  lda #13
-  jsr WriteCharacter
-  pla ; clear stack from pushed sp
-  tax
-  txs
-  lda #0
-  sta arg1
-  sta arg1+1 ; return 0 (return values need not be pushed unless at end of block / subexpr)
-  jmp thread_loop
-  
+  rts
 
+stx_err:
+  .text 15, "[?]", 13, 0
 ; store word on stack,x into arg1
 ; and decrement x
-stack_x_to_arg1:
-  lda $0100,x
+stack_y_to_arg1:
+  lda $0100,y
   sta arg1+1
 ;adc #$30
 ;jsr WriteCharacter
-  dex
-  lda $0100,x
+  dey
+  lda $0100,y
   sta arg1
 ;adc #$30
 ;jsr WriteCharacter
-  dex
+  dey
   rts
-
-clear_stack_from_y_via_ax .macro
-  tya ; y contains 'frame pointer' == base stack
-  tax ; ...move it the long way around...
-  txs ; to set stack size to before expression
-.endmacro
 
 ; Because we jump into core prims by means of rts, these need address minus one
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
-  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <eval-1, <done-1, <setb, <print
+  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <eval-1, <done-1, <return, <setb, <print
 jumptable_msb:
-  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >eval-1, >done-1, >setb, >print
+  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >eval-1, >done-1, >return, >setb, >print
 
 fixed_strings:
+  .text 8, "return", 0
   .text 6, "setb", 0
   .text 7, "print", 0, 0
 
-NUM_FIXED_STRINGS=2
+NUM_FIXED_STRINGS=3
 
 PRIM_PUSH0=0
 PRIM_PUSH1=1
@@ -213,7 +223,8 @@ PRIM_STRB=4
 PRIM_STRW=5
 PRIM_EVAL=6
 PRIM_DONE=7
-PRIM_SETB=8
-PRIM_PRINT=9
-MAX_CORE=7
+PRIM_RETURN=8  ; only need these constants for fixed demo program
+PRIM_SETB=9
+PRIM_PRINT=10
 
+MAX_CORE=7
