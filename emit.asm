@@ -3,16 +3,14 @@
 ; assuming they come in that order, e.g. PUSHB before PUSHW.
 ; Call with byte variant.
 ;
-; cmd arg is in x; caller's y actively is preserved
+; cmd arg is in x; caller's y actively is preserved (because caller is the parse function)
 
 emit_optimized_cmd:
   lda arg1+1        ; is msb zero?
   beq emit_byte_cmd ; then emit the byte sized variant
-
-emit_word_cmd:
-
-  clc               ; clear carry to mark we're emitting 2 bytes
   inx               ; cmd+1 for word sized variant; should not change carry
+emit_word_cmd:
+  clc               ; clear carry to mark we're emitting 2 bytes
   bcc do_emit_cmd   ; always taken
 
 emit_byte_cmd:

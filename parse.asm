@@ -1,5 +1,3 @@
-; Parser. Presently a stand-alone demo.
-
 *=$0800
 
 linebuf=$0200   ; Say where ReadLine puts its results
@@ -11,6 +9,7 @@ WriteCharacter = $fff1
 Parameters=$FF04
 
 strlen = $20
+stackbottom = $21
 
 init:
   lda #0
@@ -24,6 +23,24 @@ init:
   ldx #$FF
   txs
 
+;#neo6502_breakpoint
+
+repl:
+  jsr parse             ; Read
+; Add 'done' after prgtop to end program by rts;
+; Do not increase prgtop so that later code can append by overwriting 'done'
+  ldy #0
+  lda #PRIM_DONE
+  sta (prgtop),y
+  jsr thread_loop       ; Eval
+  jsr print_repl_result ; Print
+; Due to 'done', ip has moved to prgtop+1; correct this
+  lda prgtop
+  sta ip
+  lda prgtop+1
+  sta ip+1
+  jmp repl              ; Loop
+
 ;
 ; Parse code
 ;
@@ -32,9 +49,13 @@ init:
 ;
 
 parse:
+  tsx      ; Save stack bottom to know if we still have (sub)expression data going
+  stx stackbottom
+
   lda #$FF ; Count args per subexpr on stack
   pha      ; Start with -1 so we can start with an increment
 
+_next_line:
   jsr read_new_line
 
 _next_char:
@@ -47,42 +68,30 @@ _have_char:  ; jump here if your last char may be the first of another arg
   adc #1
   pha
 ; test for end of line
-  tya       ; TODO do not hold y hostage for full REPL loop
+  tya
   cmp strlen
   txa
   bcc _no_eol
 
-_eval:
-;#neo6502_breakpoint
+_emit_toplevel_eval:
   pla       ; pull n args
   sta arg1
+
+  tsx
+  txa
+  cmp stackbottom
+  beq _do_emit_eval
+_have_brackets_open:
+  lda #$42
+  jsr WriteCharacter
+  lda arg1        ; restore last arg count on stack
+  pha
+  jmp _next_line  ; and read another line (assuming we're here because end of line!)
+_do_emit_eval:
   ldx #PRIM_EVAL
   jsr emit_byte_cmd
-  ; Temporarily append 'done'
-  ldx #PRIM_DONE
-  jsr emit_byte
-  tya
-  pha
-  jsr thread_loop ; Run expression
-  jsr print_repl_result
-  pla
-  tay
-  ; Remove 'done' so that any later code is appended into one program
-  lda prgtop
-  sec
-  sbc #1
-  sta prgtop
-  sta ip
-  bcs +
-  lda prgtop+1
-  sbc #1
-  sta prgtop
-  sta ip
-+
-  ; And start new round
-  tsx
-;#neo6502_breakpoint
-  jmp parse
+_done:
+  rts
 
 _no_eol:
 
@@ -95,13 +104,79 @@ _skip_whitespace:
   jmp _skip_whitespace
 _try_sep:
   cmp #';'
-  bne _try_number
+  bne _try_open_sub
   pla       ; pull n args
   sta arg1
   ldx #PRIM_EVAL
   jsr emit_byte_cmd
   lda #$FF  ; start new arg count
   pha
+  jmp _next_char
+_try_open_sub:
+  cmp #'('
+  bne _try_close_sub
+  pha       ; for bracket matching
+  lda #$FF  ; start new arg count
+  pha
+  jmp _next_char
+_try_close_sub:
+  cmp #')';
+  bne _try_open_blk
+  pla       ; pull n args
+  sta arg1
+  pla
+  cmp #'('  ; matching bracket?
+  beq _emit_eval
+  jsr syntax_error ; TODO retract emitted values in this line (save prgtop just like stackbottom)
+  ldx stackbottom
+  txs
+  jmp parse
+_emit_eval:
+  ldx #PRIM_EVAL
+  jsr emit_byte_cmd
+  ldx #PRIM_PUSH_RESULT
+  jsr emit_byte
+  jmp _next_char
+_try_open_blk:
+  cmp #'{'
+  bne _try_close_blk
+  pha                ; for bracket matching
+  lda prgtop+1       ; push insertion point (minus one!) on stack
+  pha
+  lda prgtop
+  pha
+  lda #$FF            ; start new arg count
+  pha
+  ldx #PRIM_SKIPW     ; emit 'skip' instruction
+  jsr emit_word_cmd   ; value is now garbage; must be fixed in close
+  jmp _next_char
+_try_close_blk:
+  cmp #'}'
+  bne _try_number
+  pla
+; TODO close final expression in block
+  pla                 ; get insertion point from stack
+  sta arg1
+  pla
+  sta arg1+1
+  pla                 ; bracket match
+  cmp #'{'
+  beq _insert_target
+  jsr syntax_error ; TODO retract emitted values in this line (save prgtop just like stackbottom)
+  ldx stackbottom
+  txs
+  jmp parse
+_insert_target:
+  tya
+  pha
+  ldy #1           ; pointer is to start of instr, so +1 for word arg
+  lda prgtop
+  sta (arg1),y
+  iny
+  lda prgtop+1
+  sta (arg1),y
+  pla
+  tay
   jmp _next_char
 _try_number:
   cmp #'0'
@@ -145,11 +220,15 @@ _done_adjusting:
   sbc #'0'            ; now make it numeric
   cmp tmp             ; digit < base?
   bcs _num_done       ; if not, it's not a valid digit
+  pha                 ; push digit
+  tya                 ; save y reg
   pha
-  lda tmp  ; load base
-  ldx #5   ; max = base 16 = 5 bits
-  jsr multiply_by_a_x_bits
-  pla  ; and add new digit
+  lda tmp             ; load base
+  ldy #5              ; max = base 16 = 5 bits
+  jsr multiply_by_a_y_bits
+  pla                 ; restore y reg
+  tay
+  pla                 ; and add new digit
   clc
   adc multiplicand
   sta multiplicand
@@ -170,19 +249,20 @@ _parse_string:
   sta tmp          ; store quote to signal string
   #next_char
   jsr parse_string_or_label
-;  #next_char ; skip closing '"'
   ldx #PRIM_STRB
   jsr emit_optimized_cmd
-  jmp _next_char ; discard closing '"' that was already parsed
+  jmp _next_char   ; discard closing '"' that was already parsed
 
 _parse_label:
-  ldx #$20        ; space delimits label
+  ldx #$20         ; space delimits label
   stx tmp
   jsr parse_string_or_label
-  txa             ; x contains unique string index
+  txa              ; x contains unique string index
   cmp #NUM_FIXED_STRINGS
   bcc _valid
   jsr syntax_error ; TODO retract emitted values in this line
+  ldx stackbottom
+  txs
   jmp parse
 _valid:
   adc #MAX_CORE+1 ; assuming valid prim, adjust to jump table offset

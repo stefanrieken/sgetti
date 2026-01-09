@@ -23,12 +23,14 @@
 lineptr      = $02 ; The line being parsed
 prgtop       = $04 ; The top of program memory
 ip           = $06 ; The instruction pointer
-tmp          = $08 ; General purpose temp
+tmp          = $08 ; General purpose temp (all kinds of uses in parse; consistently used as arg counter in eval)
+tmp2         = $09 ; General purpose temp (used by divide)
 
 result2      = $0A 
 arg1         = $0C ; First argument (let's count these from 1)
 arg2         = $0E ; Second argument
 result       = $10 ; Result -- often gets copied back to arg1
+primptr      = $12 ; Address of current expression level primitive, useful for looping
 
 ; The same registers when used in division
 remainder    = result2; divident is gradually left shifted into remainder & subtracted with corresponding divisor bit
@@ -62,7 +64,7 @@ _test_if_core:
   tya
   cmp #MAX_CORE+1   ; is prim > max core prim?
   bcs thread_loop ; then only push this expression level primitive; leave eval to 'eval n'
-  rts ; use RTS to actually JMP to primitive code MINUS ONE; so adjust core jump table accordingly
+  rts ; hack: JMP to address on stack PLUS ONE (so adjust core jump table accordingly)
 
   ; All primitives should return by jumping to thread_loop.
   ; If not, this value triggers the monitor in the neo6502 emulator:
@@ -85,12 +87,12 @@ _done:
 ; 
 
 push0:
-  lda #$0
+  lda #0
   pha
   pha
-  jmp thread_loop
+  beq thread_loop
 push1:
-  lda #$1
+  ldx #$1
   bne push_byte_in_x
 push_byte:
   jsr next_byte ; then fall through:
@@ -110,6 +112,24 @@ push_word:
   txa
   pha ; push lsb last
   jmp thread_loop
+push_result:
+  lda arg1+1       ; result of expression level prims is in arg1
+  pha
+  lda arg1         ; inject this core prim after a subexpr to push result value
+  pha
+  jmp thread_loop
+skipw:
+  jsr next_byte    ; temporarily store target in x, y
+  tax
+  jsr next_byte
+  tay
+  lda ip+1         ; push current ip == start of block
+  pha
+  lda ip
+  pha
+  stx ip           ; and set ip to target
+  sty ip+1         ; for now skip is absolute instead of an offset
+  jmp thread_loop
 eval:
 _calc_fp:
   jsr next_byte; load num of 2-byte stack items to eval
@@ -122,16 +142,26 @@ _calc_fp:
 _do_eval:
   tax ; x now holds 'frame pointer'
   tay ; y holds same value, but is walked as argument index
-  jsr stack_y_to_arg1 ; fetch first argument (the primitive to call)
-  jmp(arg1) ; jump to primitive
+; Fetch first argument (the primitive to call)
+  lda $0100,y
+  sta primptr+1
+  dey
+  lda $0100,y
+  sta primptr
+  dey
+  lsr tmp ; restore num args
+  dec tmp
+  beq +
+; Fetch first real arg (if any) as a service to the primitives
+  jsr stack_y_to_arg1
++
+  jmp(primptr) ; jump to primitive
 done:
   rts   ; to exit thread loop by returning to whoever called us
 return: ; in the Pasta sense of returning the argument value as expression outcome
-  jsr stack_y_to_arg1
   txs ; restore stack
   jmp thread_loop
 setb: ; 'setb 0x1234 42'
-  jsr stack_y_to_arg1
   dey
   lda $0100,y ; setb only uses lsb of value
   dey
@@ -145,26 +175,136 @@ setb: ; 'setb 0x1234 42'
   jmp thread_loop
 
 print: ; print a unique_string or similarly formatted string
-  lsr tmp ; restore num args
-  dec tmp
-_print_next_str:
-  jsr stack_y_to_arg1
   tya
-  pha ; stash arg counter
+  pha ; stash arg idx
   jsr print_arg1
-  pla ; restore arg counter
+  pla ; restore arg idx
   tay
-  dec tmp
-  bne _print_next_str
-  lda #13
+  dec tmp   ; more args?
+  bmi _done ; print those as well
+  jsr stack_y_to_arg1_no_check  ; don't let this function return for us
+  jmp print
+_done
+  lda #13                       ; so that we can write a newline (may remove this feature later)
   jsr WriteCharacter
   txs ; restore stack
-  lda #0
-  sta arg1
-  sta arg1+1 ; return 0 (return values need not be pushed unless at end of block / subexpr)
   jmp thread_loop
 
-; utility callable versions of print
+add:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  dec tmp
+  bmi done_via_x ; but don't rely on having more parameters on stack
+.byte 3
+  clc
+  lda arg1
+  adc $00FF,y
+  sta arg1
+  lda arg1+1
+  adc $0100,y
+; Common tail for many multi-arg operators. Shaves off some 4 bytes per operator
+; (Was more before, so reconsider whether this is still useful.)
+; Notice that it also takes on the final 'sta arg1+1'
+multi_arg_tail:
+  sta arg1+1
+  dey
+  dey
+  jmp(primptr) ; go for another round
+
+sub:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  dec tmp
+  bmi done_via_x ; but don't rely on having more parameters on stack
+  sec
+  lda arg1
+  sbc $00FF,y
+  sta arg1
+  lda arg1+1
+  sbc $0100,y
+  jmp multi_arg_tail
+
+land:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  dec tmp
+  bmi done_via_x ; but don't rely on having more parameters on stack
+  lda arg1
+  and $00FF,y
+  sta arg1
+  lda arg1+1
+  and $0100,y
+  jmp multi_arg_tail
+
+lor:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  dec tmp
+  bmi done_via_x ; but don't rely on having more parameters on stack
+  lda arg1
+  ora $00FF,y
+  sta arg1
+  lda arg1+1
+  ora $0100,y
+  jmp multi_arg_tail
+
+xor:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  dec tmp
+  bmi done_via_x ; but don't rely on having more parameters on stack
+  lda arg1
+  eor $00FF,y
+  sta arg1
+  lda arg1+1
+  eor $0100,y
+  jmp multi_arg_tail
+
+not:
+  lda arg1
+  eor #$FF
+  sta arg1
+  lda arg1+1
+  eor #$FF
+  sta arg1+1
+done_via_x:
+  txs
+  jmp thread_loop
+
+times:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  jsr stack_y_to_arg2 ; and trust this function to exit when no more args
+  tya
+  pha
+  jsr multiply
+  jmp times_div_tail
+
+div:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  jsr stack_y_to_arg2 ; and trust this function to exit when no more args
+  tya
+  pha
+  jsr divide
+times_div_tail:
+  pla
+  tay
+  lda result
+  sta arg1
+  lda result+1
+  sta arg1+1
+  jmp (primptr)
+
+rem:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  jsr stack_y_to_arg2 ; and trust this function to exit when no more args
+  tya
+  pha
+  jsr divide
+  pla
+  tay
+  lda result2
+  sta arg1
+  lda result2+1
+  sta arg1+1
+  txs
+  jmp thread_loop ; no use for repeated arguments with remainder
+
+; utility callable versions of print & print error
 syntax_error:
   lda #<stx_err
   ldx #>stx_err
@@ -186,34 +326,58 @@ _str_done:
 
 stx_err:
   .text 15, "[?]", 13, 0
-; store word on stack,x into arg1
-; and decrement x
+
+; store word on stack,y into arg1
+; and decrement y
 stack_y_to_arg1:
+  dec tmp
+  bmi done_via_x
+stack_y_to_arg1_no_check:
   lda $0100,y
   sta arg1+1
-;adc #$30
-;jsr WriteCharacter
   dey
   lda $0100,y
   sta arg1
-;adc #$30
-;jsr WriteCharacter
+  dey
+  rts
+
+; dumbly supply the same function for arg2
+; as target is hard to parameterize (while keeping x intact)
+stack_y_to_arg2:
+  dec tmp
+  bmi done_via_x
+  lda $0100,y
+  sta arg2+1
+  dey
+  lda $0100,y
+  sta arg2
   dey
   rts
 
 ; Because we jump into core prims by means of rts, these need address minus one
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
-  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <eval-1, <done-1, <return, <setb, <print
+  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
+  .text <return, <setb, <print, <add, <sub, <land, <lor, <xor, <not, <times, <div, <rem
 jumptable_msb:
-  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >eval-1, >done-1, >return, >setb, >print
+  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
+  .text >return, >setb, >print, >add, >sub, >land, >lor, >xor, >not, >times, >div, >rem
 
 fixed_strings:
   .text 8, "return", 0
   .text 6, "setb", 0
-  .text 7, "print", 0, 0
+  .text 7, "print", 0
+  .text 3, "+", 0
+  .text 3, "-", 0
+  .text 3, "&", 0
+  .text 3, "|", 0
+  .text 3, "^", 0
+  .text 3, "~", 0
+  .text 3, "*", 0
+  .text 3, "/", 0
+  .text 3, "%", 0, 0
 
-NUM_FIXED_STRINGS=3
+NUM_FIXED_STRINGS=12
 
 PRIM_PUSH0=0
 PRIM_PUSH1=1
@@ -221,10 +385,21 @@ PRIM_PUSHB=2
 PRIM_PUSHW=3
 PRIM_STRB=4
 PRIM_STRW=5
-PRIM_EVAL=6
-PRIM_DONE=7
-PRIM_RETURN=8  ; only need these constants for fixed demo program
-PRIM_SETB=9
-PRIM_PRINT=10
+PRIM_PUSH_RESULT=6
+PRIM_SKIPW=7
+PRIM_EVAL=8
+PRIM_DONE=9
+PRIM_RETURN=10  ; only need these constants for fixed demo program
+PRIM_SETB=11
+PRIM_PRINT=12
+PRIM_ADD=13
+PRIM_SUB=14
+PRIM_AND=15
+PRIM_OR=16
+PRIM_XOR=17
+PRIM_NOT=18
+PRIM_TIMES=19
+PRIM_DIV=20
+PRIM_REM=21
 
-MAX_CORE=7
+MAX_CORE=9

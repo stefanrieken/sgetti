@@ -78,18 +78,18 @@ stack, and then calls `rts`, reducing the code to 9 bytes.
 Sgetti can currently evaluate primitive-based expressions and compiles with the
 neo6502 emulator as a target (see the `run` Makefile target for details).
 
-Once running in the emulator, you can type `print "Hello, World!"` and even
-expect the outcome to be as predictable. It is even possible to write some
-early variations:
+Here are a few expressions to try:
 
         print "hello"; print "world"
-        print "hello " "world"
+        print "Hello, " (return "world") "!"
+        + (* 3 4) (* 5 6)
+        * (+ 1 2) (+ 3 4) 2
+        / 0x2a 2 3
+        % 44 3
+        ~ 0x2a
 
-The `return` statement (Pasta style: return argument as expression result) can
-also be tried, for instance to show off hexadecimal support. Finally there is
-`setb`, which is Pasta's equivalent of `poke`:
+There is initial support for blocks, but only to skip them, so that:
 
-        return 0x2a
-        setb 0x3800 42
+        return { print "hello" }
 
-That's it for now.
+yields the starting address of the code block while skipping over it.

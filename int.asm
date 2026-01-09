@@ -1,12 +1,12 @@
 ; Invoke 'multiply' with 1-byte multiplier in a, and result copied back into multiplicand.
 
 multiply_by_a:
-  ldx #8
-multiply_by_a_x_bits:
+  ldy #8
+multiply_by_a_y_bits:
   sta multiplier
   lda #$00
   sta multiplier+1
-  jsr multiply_x_bits ; a is max 8 bits wide
+  jsr multiply_y_bits ; a is max 8 bits wide
   lda result
   sta multiplicand
   lda result+1
@@ -18,8 +18,8 @@ multiply_by_a_x_bits:
 ; Also uses x
 
 multiply:
-  ldx #$16       ; easier to just count max cycles than to determine whether 2-byte multiplier is fully shifted out
-multiply_x_bits: ; target for a limited sized multiplier
+  ldy #$16       ; easier to just count max cycles than to determine whether 2-byte multiplier is fully shifted out
+multiply_y_bits: ; target for a limited sized multiplier
 ; clear target
   lda #$00
   sta result
@@ -39,7 +39,7 @@ _add_multiplicand:
 _shift_multiplicand:
   asl multiplicand
   rol multiplicand+1
-  dex
+  dey
   bne _next_bit_in_carry
   rts
 
@@ -59,7 +59,7 @@ divide_by_a:
 ; Also uses x
 
 divide:
-  ldx #16          ; because we start from msb, we can't too easily skip bits here
+  ldy #16          ; because we start from msb, we can't too easily skip bits here
 ; clear remainder -- don't need to clear result if we go over all 16 bits
   lda #$00
   sta remainder
@@ -72,17 +72,17 @@ _next_bit:
   lda remainder     ; can we subtract divisor from remainder?
   sec
   sbc divisor
-  sta tmp           ; temporarily save half-subtraction result
+  sta tmp2          ; temporarily save half-subtraction result
   lda remainder+1
   sbc divisor+1
   bcc _lt           ; c is still 1 if result of subtraction remained positive
   sta remainder+1   ; in which case, save that result
-  lda tmp
+  lda tmp2
   sta remainder
 _lt
   rol result        ; set result bit from carry
   rol result+1
-  dex
+  dey
   bne _next_bit
   rts
 
@@ -101,23 +101,23 @@ printnum_base_10:
    lda #0
    sta divisor+1
 printnum:
-   ldy #0            ; digit counter
+   ldx #0            ; digit counter
 _more_digits:
    jsr divide
    lda remainder     ; expect a 1 byte remainder (for bases < 256)
    pha
-   iny
+   inx
    lda result        ; move result -> dividend
    sta dividend
    cmp divisor       ; if lsb result >= divisor, carry is set
-   ldx result+1      ; if msb result is zero, zero bit is set; carry unaffected
-   stx dividend+1
+   ldy result+1      ; if msb result is zero, zero bit is set; carry unaffected
+   sty dividend+1
    bcs _more_digits  ; in case of lsb >= divisor
    bne _more_digits  ; in case of msb != 0
-   tax               ; re-trigger test for zero
+   tay               ; re-trigger status register test for zero
    beq _print_char   ; don't push a leading zero
    pha               ; push nonzero digit
-   iny
+   inx
 _print_char:
    pla               ; print digits from stack
    clc
@@ -127,7 +127,7 @@ _print_char:
    adc #$31 ; difference from '0' to (friendly lowercase) 'a'
 _print:
    jsr WriteCharacter
-   dey               ; more digits on stack?
+   dex               ; more digits on stack?
    bne _print_char
    rts
 
