@@ -194,7 +194,6 @@ add:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
   dec tmp
   bmi done_via_x ; but don't rely on having more parameters on stack
-.byte 3
   clc
   lda arg1
   adc $00FF,y
@@ -212,6 +211,12 @@ multi_arg_tail:
 
 sub:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  jsr do_sub
+  dey
+  dey
+  jmp(primptr) ; go for another round
+
+do_sub:
   dec tmp
   bmi done_via_x ; but don't rely on having more parameters on stack
   sec
@@ -220,9 +225,10 @@ sub:
   sta arg1
   lda arg1+1
   sbc $0100,y
-  jmp multi_arg_tail
+  sta arg1+1
+  rts
 
-land:
+band:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
   dec tmp
   bmi done_via_x ; but don't rely on having more parameters on stack
@@ -233,7 +239,7 @@ land:
   and $0100,y
   jmp multi_arg_tail
 
-lor:
+bor:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
   dec tmp
   bmi done_via_x ; but don't rely on having more parameters on stack
@@ -255,7 +261,7 @@ xor:
   eor $0100,y
   jmp multi_arg_tail
 
-not:
+bnot:
   lda arg1
   eor #$FF
   sta arg1
@@ -304,8 +310,77 @@ rem:
   txs
   jmp thread_loop ; no use for repeated arguments with remainder
 
-; utility callable versions of print & print error
+eq:
+  jsr do_sub ; have arg1+1 result in a
+  ora arg1   ; any of these have 1's?
+  bne nope
+  beq yup
+ne:
+  jsr do_sub ; have arg1+1 result in a
+  ora arg1   ; any of these have 1's?
+  bne yup
+  beq nope
+lt:
+  jsr do_sub
+  bcc yup
+  bcs nope
+gt:
+  jsr do_sub ; have arg1+1 result in a
+  bcs nope
+  ora arg1   ; any of these have 1's?
+  beq nope
+  bne yup
+lte:
+  jsr do_sub ; have arg1+1 result in a
+  bcs yup
+  ora arg1   ; any of these have 1's?
+  beq yup
+  bne nope
+gte:
+  jsr do_sub
+  bcc yup
+  bcs nope
+land:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  jsr stack_y_to_arg2 ; and trust this function to exit when no more args
+  lda arg1
+  ora arg1+1
+  beq nope
+  lda arg2
+  ora arg2+1
+  beq nope
+  jmp yup
+lor:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  jsr stack_y_to_arg2 ; and trust this function to exit when no more args
+  lda arg1
+  ora arg1+1
+  ora arg2
+  ora arg2+1
+  beq nope
+  bne yup
+lnot:
+  ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
+  lda arg1
+  ora arg1+1
+  beq yup
+  bne nope
+
+yup:
+  lda #1
+  bne +
+nope:
+  lda #0
++
+  sta arg1
+  lda #0
+  sta arg1+1
+done_via_x2:
+  txs
+  jmp thread_loop
+
 syntax_error:
+; utility callable versions of print & print error
   lda #<stx_err
   ldx #>stx_err
 print_ax:
@@ -331,7 +406,7 @@ stx_err:
 ; and decrement y
 stack_y_to_arg1:
   dec tmp
-  bmi done_via_x
+  bmi done_via_x2
 stack_y_to_arg1_no_check:
   lda $0100,y
   sta arg1+1
@@ -345,7 +420,7 @@ stack_y_to_arg1_no_check:
 ; as target is hard to parameterize (while keeping x intact)
 stack_y_to_arg2:
   dec tmp
-  bmi done_via_x
+  bmi done_via_x2
   lda $0100,y
   sta arg2+1
   dey
@@ -358,10 +433,10 @@ stack_y_to_arg2:
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
-  .text <return, <setb, <print, <add, <sub, <land, <lor, <xor, <not, <times, <div, <rem
+  .text <return, <setb, <print, <add, <sub, <band, <bor, <xor, <bnot, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
-  .text >return, >setb, >print, >add, >sub, >land, >lor, >xor, >not, >times, >div, >rem
+  .text >return, >setb, >print, >add, >sub, >band, >bor, >xor, >bnot, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
 
 fixed_strings:
   .text 8, "return", 0
@@ -375,9 +450,18 @@ fixed_strings:
   .text 3, "~", 0
   .text 3, "*", 0
   .text 3, "/", 0
-  .text 3, "%", 0, 0
+  .text 3, "%", 0
+  .text 3, "=", 0
+  .text 4, "!=", 0
+  .text 3, "<", 0
+  .text 3, ">", 0
+  .text 4, "<=", 0
+  .text 4, ">=", 0
+  .text 4, "&&", 0
+  .text 4, "||", 0
+  .text 3, "!", 0, 0
 
-NUM_FIXED_STRINGS=12
+NUM_FIXED_STRINGS=21
 
 PRIM_PUSH0=0
 PRIM_PUSH1=1
@@ -401,5 +485,14 @@ PRIM_NOT=18
 PRIM_TIMES=19
 PRIM_DIV=20
 PRIM_REM=21
+PRIM_EQ=22
+PRIM_NE=23
+PRIM_LT=24
+PRIM_GT=25
+PRIM_LTE=26
+PRIM_GTE=27
+PRIM_LAND=28
+PRIM_LOR=29
+PRIM_LNOT=30
 
 MAX_CORE=9

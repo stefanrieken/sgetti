@@ -86,7 +86,7 @@ Here are a few expressions to try:
         * (+ 1 2) (+ 3 4) 2
         / 0x2a 2 3
         % 44 3
-        ~ 0x2a
+        = (* 6 7) 0x2a
 
 There is initial support for blocks, but only to skip them, so that:
 
