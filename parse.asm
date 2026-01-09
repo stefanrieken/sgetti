@@ -154,11 +154,11 @@ _try_close_blk:
   cmp #'}'
   bne _try_number
   pla
-; TODO close final expression in block
+  sta tmp
   pla                 ; get insertion point from stack
-  sta arg1
+  sta arg2
   pla
-  sta arg1+1
+  sta arg2+1
   pla                 ; bracket match
   cmp #'{'
   beq _insert_target
@@ -167,14 +167,20 @@ _try_close_blk:
   txs
   jmp parse
 _insert_target:
+  lda tmp
+  sta arg1
+  ldx #PRIM_EVAL
+  jsr emit_byte_cmd
+  ldx #PRIM_DONE
+  jsr emit_byte
   tya
   pha
   ldy #1           ; pointer is to start of instr, so +1 for word arg
   lda prgtop
-  sta (arg1),y
+  sta (arg2),y
   iny
   lda prgtop+1
-  sta (arg1),y
+  sta (arg2),y
   pla
   tay
   jmp _next_char

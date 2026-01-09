@@ -54,17 +54,16 @@ neo6502_breakpoint .macro
 
 thread_loop:
   jsr next_byte ; consider in-lining this code here to win back 12 cycles in main loop
-_perform_instr:
+  cmp #MAX_CORE+1   ; is prim > max core prim?
+_push_instr:
   tay
   lda jumptable_msb,y ; to potentially support full 256 instrs, use separate page for jumptable lsb / msb
   pha
   lda jumptable_lsb,y ; (may also try to keep all jumps on one page so that msb is always the same)
   pha
-_test_if_core:
-  tya
-  cmp #MAX_CORE+1   ; is prim > max core prim?
-  bcs thread_loop ; then only push this expression level primitive; leave eval to 'eval n'
-  rts ; hack: JMP to address on stack PLUS ONE (so adjust core jump table accordingly)
+_eval_if_core:
+  bcs thread_loop ; only push expression level primitive; leave eval to 'eval n'
+  rts ; eval by JMP to address on stack PLUS ONE (so adjust core jump table accordingly)
 
   ; All primitives should return by jumping to thread_loop.
   ; If not, this value triggers the monitor in the neo6502 emulator:
@@ -165,7 +164,6 @@ setb: ; 'setb 0x1234 42'
   dey
   lda $0100,y ; setb only uses lsb of value
   dey
-;jsr WriteCharacter
   ldy #0
   sta (arg1),y ; and perform set
   ; done, now prepare return value in arg1
@@ -173,7 +171,6 @@ setb: ; 'setb 0x1234 42'
   sty arg1+1
   txs ; restore stack
   jmp thread_loop
-
 print: ; print a unique_string or similarly formatted string
   tya
   pha ; stash arg idx
@@ -189,6 +186,33 @@ _done
   jsr WriteCharacter
   txs ; restore stack
   jmp thread_loop
+
+if:
+  lda arg1
+  ora arg1+1
+  bne _then
+_else:
+  dec tmp    ; continue to 'else' block (if any)
+  dey
+  dey
+_then:
+  jsr stack_y_to_arg1 ; and fall through to 'eval'
+evalb: ; eval block
+  txs                 ; early restore stack as we already have our only arg1
+  lda ip+1            ; save current ip
+  pha
+  lda ip
+  pha
+  lda arg1            ; set ip to block
+  sta ip
+  lda arg1+1
+  sta ip+1
+  jsr thread_loop     ; eval block in sub thread_loop
+  pla                 ; restore own ip
+  sta ip
+  pla
+  sta ip+1
+  jmp thread_loop     ; continue as usual
 
 add:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
@@ -375,32 +399,9 @@ nope:
   sta arg1
   lda #0
   sta arg1+1
-done_via_x2:
+done_via_x2:   ; shared tail
   txs
   jmp thread_loop
-
-syntax_error:
-; utility callable versions of print & print error
-  lda #<stx_err
-  ldx #>stx_err
-print_ax:
-  sta arg1
-  stx arg1+1
-print_arg1:
-  ldy #0
-  lda (arg1),y  ; load size of string in A
-  beq _str_done     ; string size zero = terminator?
-_loop:
-  iny               ; next character
-  lda (arg1),y  ; load character value
-  beq _str_done     ; zero terminated
-  jsr WriteCharacter
-  bne _loop         ; = unconditional jump
-_str_done:
-  rts
-
-stx_err:
-  .text 15, "[?]", 13, 0
 
 ; store word on stack,y into arg1
 ; and decrement y
@@ -429,19 +430,46 @@ stack_y_to_arg2:
   dey
   rts
 
+; utility callable versions of print & print error
+syntax_error:
+  lda #<stx_err
+  ldx #>stx_err
+print_ax:
+  sta arg1
+  stx arg1+1
+print_arg1:
+  ldy #0
+  lda (arg1),y  ; load size of string in A
+  beq _str_done     ; string size zero = terminator?
+_loop:
+  iny               ; next character
+  lda (arg1),y  ; load character value
+  beq _str_done     ; zero terminated
+  jsr WriteCharacter
+  bne _loop         ; = unconditional jump
+_str_done:
+  rts
+
+stx_err:
+  .text 15, "[?]", 13, 0
+
 ; Because we jump into core prims by means of rts, these need address minus one
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
-  .text <return, <setb, <print, <add, <sub, <band, <bor, <xor, <bnot, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
+  .text <return, <setb, <print, <if, <evalb
+  .text <add, <sub, <band, <bor, <xor, <bnot, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
-  .text >return, >setb, >print, >add, >sub, >band, >bor, >xor, >bnot, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
+  .text >return, >setb, >print, >if, >evalb
+  .text >add, >sub, >band, >bor, >xor, >bnot, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
 
 fixed_strings:
   .text 8, "return", 0
   .text 6, "setb", 0
   .text 7, "print", 0
+  .text 4, "if", 0
+  .text 6, "eval", 0
   .text 3, "+", 0
   .text 3, "-", 0
   .text 3, "&", 0
@@ -461,7 +489,7 @@ fixed_strings:
   .text 4, "||", 0
   .text 3, "!", 0, 0
 
-NUM_FIXED_STRINGS=21
+NUM_FIXED_STRINGS=23
 
 PRIM_PUSH0=0
 PRIM_PUSH1=1
@@ -473,26 +501,28 @@ PRIM_PUSH_RESULT=6
 PRIM_SKIPW=7
 PRIM_EVAL=8
 PRIM_DONE=9
-PRIM_RETURN=10  ; only need these constants for fixed demo program
+PRIM_RETURN=10
 PRIM_SETB=11
 PRIM_PRINT=12
-PRIM_ADD=13
-PRIM_SUB=14
-PRIM_AND=15
-PRIM_OR=16
-PRIM_XOR=17
-PRIM_NOT=18
-PRIM_TIMES=19
-PRIM_DIV=20
-PRIM_REM=21
-PRIM_EQ=22
-PRIM_NE=23
-PRIM_LT=24
-PRIM_GT=25
-PRIM_LTE=26
-PRIM_GTE=27
-PRIM_LAND=28
-PRIM_LOR=29
-PRIM_LNOT=30
+PRIM_IF=13
+PRIM_EVALB=14
+PRIM_ADD=15
+PRIM_SUB=16
+PRIM_AND=17
+PRIM_OR=18
+PRIM_XOR=19
+PRIM_NOT=20
+PRIM_TIMES=21
+PRIM_DIV=22
+PRIM_REM=23
+PRIM_EQ=24
+PRIM_NE=25
+PRIM_LT=26
+PRIM_GT=27
+PRIM_LTE=28
+PRIM_GTE=29
+PRIM_LAND=30
+PRIM_LOR=31
+PRIM_LNOT=32
 
 MAX_CORE=9
