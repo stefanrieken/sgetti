@@ -9,6 +9,10 @@ init:
   lda #>progmem
   sta prgtop+1
   sta ip+1
+  lda #<vars_end
+  sta varptr
+  lda #>vars_end
+  sta varptr+1
   ldx #$FF
   txs
 

@@ -21,11 +21,11 @@
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
-  .text <return, <setb, <print, <if, <evalb
+  .text <return, <setb, <print, <if, <evalb, <define, <get, <set
   .text <add, <sub, <band, <bor, <xor, <bnot, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
-  .text >return, >setb, >print, >if, >evalb
+  .text >return, >setb, >print, >if, >evalb, >define, >get, >set
   .text >add, >sub, >band, >bor, >xor, >bnot, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
 
 fixed_strings:
@@ -34,6 +34,9 @@ fixed_strings:
   .text 7, "print", 0
   .text 4, "if", 0
   .text 6, "eval", 0
+  .text 8, "define", 0
+  .text 5, "get", 0
+  .text 5, "set", 0
   .text 3, "+", 0
   .text 3, "-", 0
   .text 3, "&", 0
@@ -70,24 +73,27 @@ PRIM_SETB=11
 PRIM_PRINT=12
 PRIM_IF=13
 PRIM_EVALB=14
-PRIM_ADD=15
-PRIM_SUB=16
-PRIM_AND=17
-PRIM_OR=18
-PRIM_XOR=19
-PRIM_NOT=20
-PRIM_TIMES=21
-PRIM_DIV=22
-PRIM_REM=23
-PRIM_EQ=24
-PRIM_NE=25
-PRIM_LT=26
-PRIM_GT=27
-PRIM_LTE=28
-PRIM_GTE=29
-PRIM_LAND=30
-PRIM_LOR=31
-PRIM_LNOT=32
+PRIM_DEFINE=15
+PRIM_GET16
+PRIM_SET=17
+PRIM_ADD=18
+PRIM_SUB=19
+PRIM_AND=20
+PRIM_OR=21
+PRIM_XOR=22
+PRIM_NOT=23
+PRIM_TIMES=24
+PRIM_DIV=25
+PRIM_REM=26
+PRIM_EQ=27
+PRIM_NE=28
+PRIM_LT=29
+PRIM_GT=30
+PRIM_LTE=31
+PRIM_GTE=32
+PRIM_LAND=33
+PRIM_LOR=34
+PRIM_LNOT=35
 
 MAX_CORE=9
 

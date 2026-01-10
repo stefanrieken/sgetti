@@ -88,8 +88,10 @@ Here are a few expressions to try:
         % 44 3
         if (= (* 6 7) 0x2a) { print "yes"; return 42 }
 
-There is initial support for blocks, but only to skip them, so that:
+There is initial support for variables, but only through primitives:
 
-        return { print "hello" }
+        define "x" 6
+        define "y" (* (get "x") 7)
+        get "y"
 
-yields the starting address of the code block while skipping over it.
+That's it for now.

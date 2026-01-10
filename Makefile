@@ -1,4 +1,4 @@
-sgetti.bin: src/neo.asm src/parse.asm src/emit.asm src/eval.asm src/base.asm src/int.asm src/uqstr.asm
+sgetti.bin: src/neo.asm src/parse.asm src/emit.asm src/eval.asm src/base.asm src/int.asm src/vars.asm src/uqstr.asm
 	cat $^ > tmp.asm # overcome a multi file symbol retainment bug
 	64tass -Wall -C --nostart tmp.asm -o $@ -l labels.txt
 
