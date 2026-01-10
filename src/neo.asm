@@ -3,15 +3,17 @@
 ;
 
 ;
-; Utility zero page registers.
+; Utility zero page registers
 ;
 
+; Byte size registers
 lineptr      = $02 ; The line being parsed
 prgtop       = $04 ; The top of program memory
 ip           = $06 ; The instruction pointer
-tmp          = $08 ; General purpose temp (all kinds of uses in parse; consistently used as arg counter in eval)
-tmp2         = $09 ; General purpose temp (used by divide)
+argc         = $08 ; General purpose temp (all kinds of uses in parse; consistently used as arg counter in eval)
+tmp          = $09 ; General purpose temp (used by divide, parse, unique_string)
 
+; Word size registers
 result2      = $0A 
 arg1         = $0C ; First argument (let's count these from 1)
 arg2         = $0E ; Second argument

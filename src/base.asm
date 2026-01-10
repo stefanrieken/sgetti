@@ -29,32 +29,32 @@ push_word:
   pha ; push lsb last
   jmp thread_loop
 push_result:
-  lda arg1+1       ; result of expression level prims is in arg1
+  lda arg1+1            ; result of expression level prims is in arg1
   pha
-  lda arg1         ; inject this core prim after a subexpr to push result value
+  lda arg1              ; inject this core prim after a subexpr to push result value
   pha
   jmp thread_loop
 skipw:
-  jsr next_byte    ; temporarily store target in x, y
+  jsr next_byte         ; temporarily store target in x, y
   tax
   jsr next_byte
   tay
-  lda ip+1         ; push current ip == start of block
+  lda ip+1              ; push current ip == start of block
   pha
   lda ip
   pha
-  stx ip           ; and set ip to target
-  sty ip+1         ; for now skip is absolute instead of an offset
+  stx ip                ; and set ip to target
+  sty ip+1              ; for now skip is absolute instead of an offset
   jmp thread_loop
 eval:
 _calc_fp:
-  jsr next_byte; load num of 2-byte stack items to eval
-  sta tmp
-  asl tmp ; tmp = arg count * 2 bytes
+  jsr next_byte         ; load num of 2-byte stack items to eval
+  sta argc
+  asl argc              ; arg count * 2 bytes
   tsx
   txa
   clc
-  adc tmp ; a now holds 'frame pointer', i.e. start of args on stack (stack goes down, so A is higher)
+  adc argc              ; a now holds 'frame pointer', i.e. start of args on stack (stack goes down, so A is higher)
 _do_eval:
   tax ; x now holds 'frame pointer'
   tay ; y holds same value, but is walked as argument index
@@ -65,8 +65,8 @@ _do_eval:
   lda $0100,y
   sta primptr
   dey
-  lsr tmp ; restore num args
-  dec tmp
+  lsr argc              ; restore to num args
+  dec argc
   beq +
 ; Fetch first real arg (if any) as a service to the primitives
   jsr stack_y_to_arg1
@@ -94,12 +94,12 @@ print: ; print a unique_string or similarly formatted string
   jsr print_arg1
   pla ; restore arg idx
   tay
-  dec tmp   ; more args?
-  bmi _done ; print those as well
+  dec argc              ; more args?
+  bmi _done             ; print those as well
   jsr stack_y_to_arg1_no_check  ; don't let this function return for us
   jmp print
 _done
-  lda #13                       ; so that we can write a newline (may remove this feature later)
+  lda #13               ; so that we can write a newline (may remove this feature later)
   jsr WriteCharacter
   txs ; restore stack
   jmp thread_loop
@@ -109,7 +109,7 @@ if:
   ora arg1+1
   bne _then
 _else:
-  dec tmp    ; continue to 'else' block (if any)
+  dec argc            ; continue to 'else' block (if any)
   dey
   dey
 _then:
@@ -134,7 +134,7 @@ evalb: ; eval block
 ; store word on stack,y into arg1
 ; and decrement y
 stack_y_to_arg1:
-  dec tmp
+  dec argc
   bmi done_via_x
 stack_y_to_arg1_no_check:
   lda $0100,y
@@ -148,7 +148,7 @@ stack_y_to_arg1_no_check:
 ; dumbly supply the same function for arg2
 ; as target is hard to parameterize (while keeping x intact)
 stack_y_to_arg2:
-  dec tmp
+  dec argc
   bmi done_via_x
   lda $0100,y
   sta arg2+1

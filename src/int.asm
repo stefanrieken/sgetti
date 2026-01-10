@@ -4,7 +4,7 @@
 
 add:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
-  dec tmp
+  dec argc
   bmi done_via_x2 ; but don't rely on having more parameters on stack
   clc
   lda arg1
@@ -29,7 +29,7 @@ sub:
   jmp(primptr) ; go for another round
 
 do_sub:
-  dec tmp
+  dec argc
   bmi done_via_x2 ; but don't rely on having more parameters on stack
   sec
   lda arg1
@@ -42,7 +42,7 @@ do_sub:
 
 band:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
-  dec tmp
+  dec argc
   bmi done_via_x2 ; but don't rely on having more parameters on stack
   lda arg1
   and $00FF,y
@@ -53,7 +53,7 @@ band:
 
 bor:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
-  dec tmp
+  dec argc
   bmi done_via_x2 ; but don't rely on having more parameters on stack
   lda arg1
   ora $00FF,y
@@ -64,7 +64,7 @@ bor:
 
 xor:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
-  dec tmp
+  dec argc
   bmi done_via_x2 ; but don't rely on having more parameters on stack
   lda arg1
   eor $00FF,y
@@ -266,12 +266,12 @@ _next_bit:
   lda remainder     ; can we subtract divisor from remainder?
   sec
   sbc divisor
-  sta tmp2          ; temporarily save half-subtraction result
+  sta tmp           ; temporarily save half-subtraction result
   lda remainder+1
   sbc divisor+1
   bcc _lt           ; c is still 1 if result of subtraction remained positive
   sta remainder+1   ; in which case, save that result
-  lda tmp2
+  lda tmp
   sta remainder
 _lt
   rol result        ; set result bit from carry
