@@ -1,5 +1,3 @@
-stringmem = $3000   ; any place in RAM for now
-
 ; UNIQUE_STRING
 ; - A,Y contain string pointer, then we set:
 ; - arg1 = string to add

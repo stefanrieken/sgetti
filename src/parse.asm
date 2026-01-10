@@ -1,16 +1,5 @@
 *=$0800
 
-linebuf=$0200   ; Say where ReadLine puts its results
-stringbuf=$0300 ; Max 256 bytes
-progmem=$6000   ; Arbitratily chosen
-
-ReadLine=$FFEB
-WriteCharacter = $fff1
-Parameters=$FF04
-
-strlen = $20
-stackbottom = $21
-
 init:
   lda #0
   sta stringmem
