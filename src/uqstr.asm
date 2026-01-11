@@ -48,18 +48,18 @@ _next_ustring:
     sta arg2+1
     jmp _compare_string ; and continue the comparison process
 _switch_to_stringmem:   ; switch from static to dynamic string memory
-    txa                 ; keep track of switch in tmp
+    txa                 ; keep track of switch in x
     bne _new_ustring    ; already switched
     lda #<stringmem
     sta arg2+0
     lda #>stringmem
     sta arg2+1
-    inx                 ; keep track of switch in tmp
+    inx                 ; keep track of switch in x
     bne _compare_string
 _new_ustring:
-    txa
-    cmp '"'
-    bcs _done           ; if label, it must exist!
+    lda tmp
+    cmp #'"'
+    bne _done           ; if label, it must exist!
     ; transfer from arg1 to arg2; zero terminated
     ldy #$FF
 _loop:

@@ -93,5 +93,7 @@ There is initial support for variables, but only through primitives:
         define "x" 6
         define "y" (* x 7)
         get "y"
+        define "f" (bind { return 42 })
+        funcall f
 
 That's it for now.

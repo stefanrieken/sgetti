@@ -44,13 +44,7 @@ _done:
 define:
   ; Have name in arg1; place value in arg2
   jsr stack_y_to_arg2
-_add_slot:
-  lda varptr
-  sec
-  sbc #4                ; 16-bit name + 16-bit value = 4 bytes
-  sta varptr
-  bcs _copy
-  dec varptr+1
+  jsr add_slot
 _copy:
   ldy #3                ; Loop to set arg1,arg2 => name,value
 _loop:
@@ -64,6 +58,68 @@ _loop:
   sta arg1+1
   txs
   jmp thread_loop
+
+
+bind:
+  ; effectively == define closure val; return closure
+  ; Have value in arg1
+  jsr add_slot
+  ldy #0
+  lda #$FF             ; equiv: "(closure)"
+  sta (varptr),y
+  iny
+  sta (varptr),y
+  lda arg1              ; set value
+  iny
+  sta (varptr),y
+  lda arg1+1
+  iny
+  sta (varptr),y
+  txs
+  ; return slot pointer
+  lda varptr
+  sta arg1
+  lda varptr+1
+  sta arg1+1
+  jmp thread_loop
+
+funcall:
+  ; Have closure pointer in arg1
+  ; Sanity check if it is a closure by checking for name = 0xFFFF
+  ldy #0
+  lda (arg1),y
+  cmp #$FF
+  bne _error
+  iny
+  lda (arg1),y
+  cmp #$FF
+  bne _error
+  iny
+  lda (arg1),y
+  sta result
+  iny
+  lda (arg1),y
+  sta result+1
+  ; Copy closure value into arg1 where the eval_block primitive expects it as argument
+  lda result
+  sta arg1
+  lda result+1
+  sta arg1+1
+  ; The eval_block primitive should handle the rest for us
+  jmp eval_block
+_error:
+  txs
+  jmp syntax_error      ; TODO in practice this prints a double result
+
+add_slot:
+  lda varptr
+  sec
+  sbc #4                ; 16-bit name + 16-bit value = 4 bytes
+  sta varptr
+  bcs _done
+  dec varptr+1
+_done:
+  rts
 
 ; Lookup a variable slot
 ; Input:

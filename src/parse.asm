@@ -267,7 +267,19 @@ _prim:
   tax
   jsr emit_byte
   jmp _next_char        ; discard delimiting space (TODO assuming it is a space!)
-_no_prim:               ; TODO either insert 'funcall' expression level prim, or emit 'ref' core prim
+_no_prim:
+.byte 3
+  pla
+  cmp #0
+  bne _ref_only
+  pha
+  ldx #PRIM_FUNCALL
+  jsr emit_byte
+  pla
+  clc
+  adc #1
+_ref_only
+  pha
   ldx #PRIM_REFB
   jsr emit_optimized_cmd
   jmp _next_char
