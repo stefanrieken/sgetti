@@ -44,21 +44,26 @@ _done:
 define:
   ; Have name in arg1; place value in arg2
   jsr stack_y_to_arg2
+  jsr do_define
+  txs
+  jmp thread_loop
+
+do_define:
   jsr add_slot
 _copy:
+  phy
   ldy #3                ; Loop to set arg1,arg2 => name,value
 _loop:
   lda arg1, y
   sta (varptr),y
   dey
   bpl _loop
+  ply
   lda arg2              ; set value as result
   sta arg1
   lda arg2+1
   sta arg1+1
-  txs
-  jmp thread_loop
-
+  rts
 
 bind:
   ; effectively == define closure val; return closure
@@ -137,6 +142,7 @@ lookup_from_arg1:
   lda arg1+1
   sta result2+1
 lookup:
+.byte 3
   lda varptr
   sta result
   lda varptr+1
@@ -164,8 +170,8 @@ _next:
   clc
   adc #4                ; 16-bit name + 16-bit value = 4 bytes
   sta result
-  bcc _loop
-  inc result+1
+  lda result+1
+  adc #0
   bcs _loop             ; Always taken
 _found:
   clc                   ; Found; clear carry as marker

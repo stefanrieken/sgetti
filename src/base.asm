@@ -1,5 +1,5 @@
 ;
-; Base primitives
+; Core primitives
 ; 
 
 push0:
@@ -98,6 +98,11 @@ _do_eval:
   jmp(primptr) ; jump to primitive
 done:
   rts   ; to exit thread loop by returning to whoever called us
+
+
+;
+; Base primitives
+;
 
 return: ; in the Pasta sense of returning the argument value as expression outcome
   txs ; restore stack
