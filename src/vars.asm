@@ -13,7 +13,7 @@
 
 get:
   ; Have name in arg1
-  jsr lookup
+  jsr lookup_from_arg1
   ldy #2
   lda (result),y
   sta arg1
@@ -26,7 +26,7 @@ get:
 set:
   ; Have name in arg1; place value in arg2
   jsr stack_y_to_arg2
-  jsr lookup            ; pointer in result
+  jsr lookup_from_arg1  ; pointer in result
   bcs _done             ; lookup failed
 _copy:
   ldy #2
@@ -66,10 +66,20 @@ _loop:
   jmp thread_loop
 
 ; Lookup a variable slot
-; Input: arg1 -> name
-; Result: result -> pointer(!) to slot
+; Input:
+; - y      -> offset from arg1 where variable name is stored
+; - arg1+y -> name
+; Result:
+; - result -> pointer(!) to slot
 ; Set or clear carry to indicate failure / success
 ; Affects y
+lookup_from_arg1:
+  ; Move arg1 to result2 as main 'lookup' is written so as not to affect arg1
+  ; Impact on 'get' speed is minimal as as 'get' is not the usual way to lookup a var
+  lda arg1
+  sta result2
+  lda arg1+1
+  sta result2+1
 lookup:
   lda varptr
   sta result
@@ -87,11 +97,11 @@ _check_at_end:
 _compare:
   ldy #0
   lda (result),y
-  cmp arg1
+  cmp result2
   bne _next
   iny
   lda (result),y
-  cmp arg1+1
+  cmp result2+1
   beq _found
 _next:
   lda result

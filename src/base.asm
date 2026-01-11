@@ -28,6 +28,30 @@ push_word:
   txa
   pha ; push lsb last
   jmp thread_loop
+ref_byte:
+  jsr next_byte
+  tax
+  lda #$00
+ref_word:
+  ; TODO we can't afford to mess up arg1 here!
+  jsr next_byte
+  tax
+  jsr next_byte
+do_ref:
+  sta result2+1          ; lookup uses result2 so as not to mess up arg1 / arg2
+  stx result2
+  jsr lookup
+  bcs _error
+  ldy #3
+  lda (result),y        ; push the result slot's value (might use the same y trick on push_result below...)
+  pha
+  dey
+  lda (result),y
+  pha
+  jmp thread_loop
+_error:
+  jsr syntax_error      ; TODO retract emitted values in this line (save prgtop just like stackbottom)
+  jmp thread_loop
 push_result:
   lda arg1+1            ; result of expression level prims is in arg1
   pha
@@ -74,6 +98,7 @@ _do_eval:
   jmp(primptr) ; jump to primitive
 done:
   rts   ; to exit thread loop by returning to whoever called us
+
 return: ; in the Pasta sense of returning the argument value as expression outcome
   txs ; restore stack
   jmp thread_loop
@@ -114,7 +139,7 @@ _else:
   dey
 _then:
   jsr stack_y_to_arg1 ; and fall through to 'eval'
-evalb: ; eval block
+eval_block:           ; eval block
   txs                 ; early restore stack as we already have our only arg1
   lda ip+1            ; save current ip
   pha

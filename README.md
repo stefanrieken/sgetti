@@ -91,7 +91,7 @@ Here are a few expressions to try:
 There is initial support for variables, but only through primitives:
 
         define "x" 6
-        define "y" (* (get "x") 7)
+        define "y" (* x 7)
         get "y"
 
 That's it for now.

@@ -20,12 +20,12 @@
 ; Because we jump into core prims by means of rts, these need address minus one
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
-  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
-  .text <return, <setb, <print, <if, <evalb, <define, <get, <set
+  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
+  .text <return, <setb, <print, <if, <eval_block, <define, <get, <set
   .text <add, <sub, <band, <bor, <xor, <bnot, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
 jumptable_msb:
-  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
-  .text >return, >setb, >print, >if, >evalb, >define, >get, >set
+  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
+  .text >return, >setb, >print, >if, >eval_block, >define, >get, >set
   .text >add, >sub, >band, >bor, >xor, >bnot, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
 
 fixed_strings:
@@ -64,38 +64,40 @@ PRIM_PUSHB=2
 PRIM_PUSHW=3
 PRIM_STRB=4
 PRIM_STRW=5
-PRIM_PUSH_RESULT=6
-PRIM_SKIPW=7
-PRIM_EVAL=8
-PRIM_DONE=9
-PRIM_RETURN=10
-PRIM_SETB=11
-PRIM_PRINT=12
-PRIM_IF=13
-PRIM_EVALB=14
-PRIM_DEFINE=15
-PRIM_GET16
-PRIM_SET=17
-PRIM_ADD=18
-PRIM_SUB=19
-PRIM_AND=20
-PRIM_OR=21
-PRIM_XOR=22
-PRIM_NOT=23
-PRIM_TIMES=24
-PRIM_DIV=25
-PRIM_REM=26
-PRIM_EQ=27
-PRIM_NE=28
-PRIM_LT=29
-PRIM_GT=30
-PRIM_LTE=31
-PRIM_GTE=32
-PRIM_LAND=33
-PRIM_LOR=34
-PRIM_LNOT=35
+PRIM_REFB=6
+PRIM_REFW=7
+PRIM_PUSH_RESULT=8
+PRIM_SKIPW=9
+PRIM_EVAL=10
+PRIM_DONE=11
+PRIM_RETURN=12
+PRIM_SETB=13
+PRIM_PRINT=14
+PRIM_IF=15
+PRIM_EVAL_BLOCK=16
+PRIM_DEFINE=17
+PRIM_GET=18
+PRIM_SET=19
+PRIM_ADD=20
+PRIM_SUB=21
+PRIM_AND=22
+PRIM_OR=23
+PRIM_XOR=24
+PRIM_NOT=25
+PRIM_TIMES=26
+PRIM_DIV=27
+PRIM_REM=28
+PRIM_EQ=29
+PRIM_NE=30
+PRIM_LT=31
+PRIM_GT=32
+PRIM_LTE=33
+PRIM_GTE=34
+PRIM_LAND=35
+PRIM_LOR=36
+PRIM_LNOT=37
 
-MAX_CORE=9
+MAX_CORE=11
 
 ;
 ; Main engine

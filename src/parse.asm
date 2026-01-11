@@ -256,17 +256,22 @@ _parse_label:
   ldx #$20              ; space delimits label
   stx tmp
   jsr parse_string_or_label
+  bcs _no_prim          ; carry marks unknown unique string, so this cannot be a known label
   lda result+1
   bne _no_prim          ; a string index with msb>0 will not be a core string
   lda result
   cmp #NUM_FIXED_STRINGS
   bcs _no_prim
 _prim:
-  adc #MAX_CORE+1      ; assuming valid prim, adjust to jump table offset
+  adc #MAX_CORE+1       ; assuming valid prim, adjust to jump table offset
   tax
   jsr emit_byte
   jmp _next_char        ; discard delimiting space (TODO assuming it is a space!)
-_no_prim:               ; TODO either insert 'funcall' expression level prim, or emit 'get' core prim
+_no_prim:               ; TODO either insert 'funcall' expression level prim, or emit 'ref' core prim
+  ldx #PRIM_REFB
+  jsr emit_optimized_cmd
+  jmp _next_char
+_syntax_error:
   jsr syntax_error      ; TODO retract emitted values in this line
   ldx stackbottom
   txs

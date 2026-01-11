@@ -22,18 +22,20 @@ vars_end  = $8000  ; Both top and start of var stack (grows down)
 lineptr      = $02 ; The line being parsed
 prgtop       = $04 ; The top of program memory
 ip           = $06 ; The instruction pointer
-argc         = $08 ; General purpose temp (all kinds of uses in parse; consistently used as arg counter in eval)
-tmp          = $09 ; General purpose temp (used by divide, parse, unique_string)
-strlen       = $20 ; TODO on neo6502 this is just linebuf[0]
-stackbottom  = $21 ; Holds 'bottom' of stack during parse
-primptr      = $12 ; Address of current expression level primitive, useful for looping
-varptr       = $22 ; Points to 'top' of varstack
+primptr      = $08 ; Address of current expression level primitive, useful for looping
+varptr       = $0A ; Points to 'top' of varstack
+
+; 1 byte
+argc         = $0C ; General purpose temp (all kinds of uses in parse; consistently used as arg counter in eval)
+tmp          = $0D ; General purpose temp (used by divide, parse, unique_string)
+strlen       = $0E ; TODO on neo6502 this is just linebuf[0]
+stackbottom  = $0F ; Holds 'bottom' of stack during parse
 
 ; Argument / result registers
-result2      = $0A 
-arg1         = $0C ; First argument (let's count these from 1)
-arg2         = $0E ; Second argument
-result       = $10 ; Result -- often gets copied back to arg1
+arg1         = $10 ; First argument (let's count these from 1)
+arg2         = $12 ; Second argument
+result       = $14 ; Result -- often gets copied back to arg1
+result2      = $16 ; Mainly used for remainder 
 
 ; The same registers when used in division
 remainder    = result2; divident is gradually left shifted into remainder & subtracted with corresponding divisor bit
