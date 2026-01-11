@@ -3,19 +3,21 @@
 ; - arg1 = string to add
 ; - arg2 = used to index over string mem
 ; - returns arg1 pointing to unique string
-; - returns nth string in x
+; - returns result as the unique string index
+;
+; Affects Y, preserves X
 
 unique_string:
-    ldx #$0 ; using x as counter
-    stx tmp ; use tmp to indicate whether we've switched from fixed to dynamic string mem
     sta arg1      ; (if) arg1 is passed in A/Y, store its value in zero page so we can use it
     sty arg1+1
-    ;lda #<stringmem   ; copy 16-bit pointer to start of strings
     lda #<fixed_strings   ; copy 16-bit pointer to start of strings
     sta arg2+0    ; for use as counter
-    ;lda #>stringmem
     lda #>fixed_strings   ; copy 16-bit pointer to start of strings
     sta arg2+1
+    lda #0
+    sta result
+    sta result+1
+    sta tmp       ; use tmp to indicate whether we've switched from fixed to dynamic string 
 _compare_string:
     ldy #0
     lda (arg2),y  ; load current string size
@@ -28,7 +30,10 @@ _compare_chars:
     cmp (arg1),y
     beq _compare_chars ; so far so same
 _next_ustring:
-    inx ; using x as counter
+    inc result
+    bne +
+    inc result+1
++
     ldy #0
     lda (arg2),y ; size of string in A
     clc
@@ -49,19 +54,15 @@ _switch_to_stringmem:   ; switch from static to dynamic string memory
     bne _compare_string
 _new_ustring:
     ; transfer from arg1 to arg2; zero terminated
-;    inx ; using x as counter
     ldy #$FF
 _loop:
     iny
     lda (arg1),y
-;jsr WriteCharacter
     sta (arg2),y
     bne _loop        ; if lda value was 0, then done copying string+terminator
     iny
     lda #$0
     sta (arg2),y ; zero terminate string chain
-;    iny
-;    sta (arg2),y ; zero terminate string chain
 _done:
     lda arg2     ; return pointer value where it is expected
     sta arg1

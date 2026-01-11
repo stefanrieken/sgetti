@@ -256,23 +256,21 @@ _parse_label:
   ldx #$20              ; space delimits label
   stx tmp
   jsr parse_string_or_label
-  txa                   ; x contains unique string index
+  lda result+1
+  bne _no_prim          ; a string index with msb>0 will not be a core string
+  lda result
   cmp #NUM_FIXED_STRINGS
-  bcc _valid
+  bcs _no_prim
+_prim:
+  adc #MAX_CORE+1      ; assuming valid prim, adjust to jump table offset
+  tax
+  jsr emit_byte
+  jmp _next_char        ; discard delimiting space (TODO assuming it is a space!)
+_no_prim:               ; TODO either insert 'funcall' expression level prim, or emit 'get' core prim
   jsr syntax_error      ; TODO retract emitted values in this line
   ldx stackbottom
   txs
   jmp parse
-_valid:
-  adc #MAX_CORE+1      ; assuming valid prim, adjust to jump table offset
-;clc
-;adc #$30
-;jsr WriteCharacter
-;sec
-;sbc #$30
-  tax
-  jsr emit_byte
-  jmp _next_char        ; discard delimiting space
 
 ;
 ; Parse string or label
@@ -297,32 +295,15 @@ _label_done:
   lda #$0
   sta stringbuf,x
   inx
-  stx stringbuf ; save total size
-; Debug total size
-;txa
-;clc
-;adc #$30
-;jsr WriteCharacter ; prints size
-;sec
-;sbc #$30
-  tya ; unique_string affects y
-  pha ; so save y
+  stx stringbuf         ; save total size to stat of string
+; feed to unique_string
+  tya                   ; unique_string affects y
+  pha                   ; so save y
   lda #<stringbuf
   ldy #>stringbuf
   jsr unique_string
-  pla ; restore y
+  pla                   ; restore y
   tay
-; String can be variable ref or expression level primitive.
-; Since we have no vars yet, assume primitive. Push as idx+MAX_CORE
-  txa
-
-; Debug string num
-;clc
-;adc #$30
-;jsr WriteCharacter
-;sec
-;sbc #$30
-
   rts
 
 next_char .macro
