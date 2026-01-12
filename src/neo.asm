@@ -26,7 +26,7 @@ primptr      = $08 ; Address of current expression level primitive, useful for l
 varptr       = $0A ; Points to 'top' of varstack
 
 ; 1 byte
-argc         = $0C ; General purpose temp (all kinds of uses in parse; consistently used as arg counter in eval)
+argc         = $0C ; Parse: counts number of defines; eval: counts number of args
 tmp          = $0D ; General purpose temp (used by divide, parse, unique_string)
 strlen       = $0E ; TODO on neo6502 this is just linebuf[0]
 stackbottom  = $0F ; Holds 'bottom' of stack during parse

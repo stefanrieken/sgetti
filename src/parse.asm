@@ -20,10 +20,13 @@ init:
 
 repl:
   jsr parse             ; Read
-; Add 'done' after prgtop to end program by rts;
+; Add 'done 0' after prgtop to end program by rts;
 ; Do not increase prgtop so that later code can append by overwriting 'done'
   ldy #0
   lda #PRIM_DONE
+  sta (prgtop),y
+  iny
+  lda #0                ; Don't clear any defines on toplevel
   sta (prgtop),y
   jsr thread_loop       ; Eval
   jsr print_repl_result ; Print
@@ -47,6 +50,9 @@ parse:
 
   lda #$FF              ; Count args per subexpr on stack
   pha                   ; Start with -1 so we can start with an increment
+
+  lda #0
+  sta argc              ; Count the number of defines
 
 _next_line:
   jsr read_new_line
@@ -133,11 +139,17 @@ _emit_eval:
 _try_open_blk:
   cmp #'{'
   bne _try_close_blk
-  pha                   ; for bracket matching
+  tax                   ; save opening bracket in x
+  lda argc              ; save current num of defines (so not the one of the block!)
+  pha
+  lda #0                ; start new defines count for within block
+  sta argc
   lda prgtop+1          ; push insertion point (minus one!) on stack
   pha
   lda prgtop
   pha
+  txa                   ; save opening bracket
+  pha                   ; for bracket matching
   lda #$FF              ; start new arg count
   pha
   ldx #PRIM_SKIPW       ; emit 'skip' instruction
@@ -146,26 +158,31 @@ _try_open_blk:
 _try_close_blk:
   cmp #'}'
   bne _try_number
-  pla
+  pla                   ; arg count of last expression
   sta tmp
-  pla                   ; get insertion point from stack
-  sta arg2
-  pla
-  sta arg2+1
   pla                   ; bracket match
   cmp #'{'
-  beq _insert_target
+  beq +
   jsr syntax_error  ; TODO retract emitted values in this line (save prgtop just like stackbottom)
   ldx stackbottom
   txs
   jmp parse
++
+  pla                   ; get insertion point from stack
+  sta arg2
+  pla
+  sta arg2+1
 _insert_target:
-  lda tmp
+  lda tmp               ; arg count of last expression
   sta arg1
   ldx #PRIM_EVAL
   jsr emit_byte_cmd
+  lda argc              ; number of defines
+  sta arg1
   ldx #PRIM_DONE
-  jsr emit_byte
+  jsr emit_byte_cmd
+  pla                   ; restore parent number of defines AFTER we have emitted our own
+  sta argc
   tya
   pha
   ldy #1                ; pointer is to start of instr, so +1 for word arg
@@ -264,11 +281,18 @@ _parse_label:
   bcs _no_prim
 _prim:
   adc #MAX_CORE+1       ; assuming valid prim, adjust to jump table offset
+  cmp #PRIM_DEFINE
+  bne +
+  inc argc              ; count number of defines
++
+  cmp #PRIM_BIND
+  bne +
+  inc argc              ; 'bind' also produces a (closure) variable
++
   tax
   jsr emit_byte
   jmp _next_char        ; discard delimiting space (TODO assuming it is a space!)
 _no_prim:
-.byte 3
   pla
   cmp #0
   bne _ref_only

@@ -11,6 +11,8 @@
 ; An argument to the contrary is anticipating the TOP_OF+VARS system from Pasta.
 
 
+; note: 'get' has become redundant since label substitution works,
+; so you can save some 20 bytes deleting this
 get:
   ; Have name in arg1
   jsr lookup_from_arg1
@@ -51,14 +53,16 @@ define:
 do_define:
   jsr add_slot
 _copy:
-  phy
+  tya
+  pha
   ldy #3                ; Loop to set arg1,arg2 => name,value
 _loop:
   lda arg1, y
   sta (varptr),y
   dey
   bpl _loop
-  ply
+  pla
+  tay
   lda arg2              ; set value as result
   sta arg1
   lda arg2+1
@@ -89,6 +93,8 @@ bind:
   jmp thread_loop
 
 funcall:
+  tya
+  pha
   ; Have closure pointer in arg1
   ; Sanity check if it is a closure by checking for name = 0xFFFF
   ldy #0
@@ -105,11 +111,25 @@ funcall:
   iny
   lda (arg1),y
   sta result+1
-  ; Copy closure value into arg1 where the eval_block primitive expects it as argument
+  ; Copy closure's value into arg1 where the eval_block primitive expects it as argument
   lda result
   sta arg1
   lda result+1
   sta arg1+1
+  ; TODO pass args to 'funcall fn' to the function, to be picked up by 'args'
+  ;
+  ; There are 2 general ways to do this:
+  ; 1) Keep them on the (arg)stack
+  ;    - Stack currently reads "var2 var1 fn funcall (rts addresses)"
+  ;    - Must not leave 'fn' and 'funcall' as garbage or later RTS will fail
+  ;    - When leaving the stack cleaning to 'args' we MUST always have a call to 'args'
+  ;    - No mechanism to detect mismatch between args (or detect 'funcall'?)
+  ; 2) Template them on the var stack
+  ;    - Let funcall pass its n unnamed args on varstack
+  ;    - Let 'args' name these (note: no call to 'args' means no check!)
+  ;    - if names < vars, delete excess values (so prefer last-as-last order) OR error
+  ;    - if names > vars, add null vars OR error
+  
   ; The eval_block primitive should handle the rest for us
   jmp eval_block
 _error:
@@ -142,7 +162,6 @@ lookup_from_arg1:
   lda arg1+1
   sta result2+1
 lookup:
-.byte 3
   lda varptr
   sta result
   lda varptr+1

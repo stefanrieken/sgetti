@@ -97,6 +97,16 @@ _do_eval:
 +
   jmp(primptr) ; jump to primitive
 done:
+  jsr next_byte         ; arg is number of defined vars in this scope
+  asl a                 ; n defines * 4 bytes per var
+  asl a
+  sta tmp
+  lda varptr
+  clc
+  adc tmp               ; Reset varstack to n defines before
+  bcc +
+  inc varptr+1
++
   rts   ; to exit thread loop by returning to whoever called us
 
 
