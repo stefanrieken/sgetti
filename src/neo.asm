@@ -2,9 +2,13 @@
 ; Utility functions on the neo6502
 
 ReadLine=$FFEB
-WriteCharacter = $fff1
+WriteCharacter = $FFF1
 Parameters=$FF04
+WaitMessage=$FFF4
+SendMessage=$FFF7
 
+KSendMessage=$FC18
+KWaitMessage=$FC81
 ;
 ; Memory allocation on the neo6502
 ;
@@ -52,4 +56,27 @@ multiplier   = arg2
 neo6502_breakpoint .macro
 .byte 3
 .endmacro
+
+*=$0800
+
+ldx #$FF
+txs
+
+; Call an API function
+; Group 1, function 4: credits
+; Group 3, funcion 2: load file: Parameters 0,1 filename, Parameters 2,3 target address
+;ldx #<filename
+;stx Parameters
+;ldy #>filename
+;sty Parameters+1
+;lda #$00
+;sta Parameters+2
+;lda #$70
+;sta Parameters+3
+;jmp +
+;filename: .text 10, "test.pasta", 0
+;+
+;jsr SendMessage
+;;.byte 1, 4
+;.byte 3, 2
 

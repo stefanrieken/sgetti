@@ -21,11 +21,11 @@
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
-  .text <return, <setb, <print, <if, <eval_block, <define, <get, <set, <bind, <funcall
+  .text <return, <setb, <print, <if, <eval_block, <define, <get, <set, <bind, <funcall, <args
   .text <add, <sub, <band, <bor, <xor, <bnot, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
-  .text >return, >setb, >print, >if, >eval_block, >define, >get, >set, >bind, >funcall
+  .text >return, >setb, >print, >if, >eval_block, >define, >get, >set, >bind, >funcall, >args
   .text >add, >sub, >band, >bor, >xor, >bnot, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
 
 fixed_strings:
@@ -39,6 +39,7 @@ fixed_strings:
   .text 5, "set", 0
   .text 6, "bind", 0
   .text 9, "funcall", 0
+  .text 6, "args", 0
   .text 3, "+", 0
   .text 3, "-", 0
   .text 3, "&", 0
@@ -82,24 +83,25 @@ PRIM_GET=18
 PRIM_SET=19
 PRIM_BIND=20
 PRIM_FUNCALL=21
-PRIM_ADD=22
-PRIM_SUB=23
-PRIM_AND=24
-PRIM_OR=25
-PRIM_XOR=26
-PRIM_NOT=27
-PRIM_TIMES=28
-PRIM_DIV=29
-PRIM_REM=30
-PRIM_EQ=31
-PRIM_NE=32
-PRIM_LT=33
-PRIM_GT=34
-PRIM_LTE=35
-PRIM_GTE=36
-PRIM_LAND=37
-PRIM_LOR=38
-PRIM_LNOT=39
+PRIM_ARGS=22
+PRIM_ADD=23
+PRIM_SUB=24
+PRIM_AND=25
+PRIM_OR=26
+PRIM_XOR=27
+PRIM_NOT=28
+PRIM_TIMES=29
+PRIM_DIV=30
+PRIM_REM=31
+PRIM_EQ=32
+PRIM_NE=33
+PRIM_LT=34
+PRIM_GT=35
+PRIM_LTE=36
+PRIM_GTE=37
+PRIM_LAND=38
+PRIM_LOR=39
+PRIM_LNOT=40
 
 MAX_CORE=11
 

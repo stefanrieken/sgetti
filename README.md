@@ -11,63 +11,45 @@ Sgetti can be thought of as:
 Affectionally known as the Little Engine, it evaluates byte sized token
 threaded code.
 
-The byte codes come in several categories. Unlike with the Pasta interpreter, we
-can afford several forms of each category:
-- `PUSH v` pushes a literal value. May come in shortcut and typed forms
-- `REF n` resolves a variable. May have several (un)optimized variants
-- `SKIP n` jumps over a block while pushing its pointer (probably just the one)
-- `EVAL n` evaluates `n` items on the argstack together as an expression (also one)
+This is considerably more compact than directly compiling to 6502 machine code,
+but easier to decode (on the 6502) than Pasta's original 4-instruction code.
 
-Other instructions (may) include:
-- `CLEAR` to clear the stack between expressions
-- `DONE` allows the interpreter to stop
-- Other still: see discussion below
+The engine still centers around the instructions PUSH, REF, EVAL, and SKIP,
+but (typed) variants and housekeeping instructions can now freely be added.
+For one thing, this means that the bytecode can be made descriptive enough to
+reproduce its own source code, similar to BASIC.
 
-Rather than being called as a subroutine, threaded code simply returns by
-jumping back to the main thread loop, leaving the stack largely unbothered.
-
-### As Compact Source Code
-Having a little more room for specific variants allows us to specify the type
-of `PUSH`ed values, which may greatly help with reproducing the source code
-from byte code, as compiled Pasta code already closely matches its source.
+Even then, the amount of core instructions is limited, so the higher bytecodes
+are used to directly reference expression level primitives, which the core
+engine simply pushes un-evaluated.
 
 ## The Primitive Engine
-Even with all variants, there are far less core instructions than different
-bytes. So even though it is not strictly necessary to mix both types, Sgetti
-simply lets byte codes greater than (e.g.) `DONE` refer to so-called expression
-level primitives.
+The core instructions mainly collect argument values on the stack, until
+finally the 'eval n' core instruction evaluates the last n stack values as an
+expression by invoking its first argument, which must be an expression level
+primitive.
 
-These primitives are resolved and then pushed, but only evaluated by `EVAL`
-after their expression arguments have been evaluated and pushed to the argument
-stack. Typical expression level primitives are things like `define` and `+`,
-but within Pasta may also include control structures like `if` and `loop`.
+A relatively large number of expression level primitives represent all built-in
+functionality, from integer maths to conditionals and more.
 
 ## The Emergent Language
-All expressions run by `EVAL` must start with an expression level primitive.
-Source code expressions, however, may freely mix primitive and native function
-calls. The compiler irons out this difference by prefixing a `funcall`
-primitive to the latter.
+As all expressions must start with an expression level primitive, the compiler
+prepends native function calls with a `funcall` primitive.
 
-The compiler may detect that a function reference is not primitive either by
-doing var stack analysis, or simply by comparing against the static list of
-primitives. Only the former allows for overriding primitives at runtime.
+This literal "primitives first" approach is notably opposite from the original
+Pasta interpreter, where only through variable and function resolution one may
+eventually stumble upon a primitive.
 
-### Variables
-Pasta's emergent environment centers around its variable system. In theory
-variables are all higher level constructs, and any Core Engine level `REF`
-commands may simply be considered a practical convenience. (In the current C
-interpreter, `REF` actually is a required core instruction, because its
-primitives are resolved through the variable system.)
-
-### Examples
-NOTE: no compiler yet!
+Ultimately it should make little difference apart from overriding primitives;
+this now requires var stack analysis to properly detect at compile time.
 
 ## 6502 Specific Challenges
 The 6502 is essentially the BASIC language of processors: simple, but often
-lacking the essential constructs required to be anything close to elegant.
+lacking the essential constructs required to be anything close to elegant or
+efficient.
 
 Even with the period appropriate solution of threaded code, we still face very
-basic challenges, like the 6502 not having the required indexed jumps.
+basic challenges, like the 6502 not supporting the required indexed jumps.
 
 Instead, we need to copy over the target address to a fixed address first, then
 jump from the latter. This alone takes up between 13-15 bytes. An alternative
@@ -88,12 +70,9 @@ Here are a few expressions to try:
         % 44 3
         if (= (* 6 7) 0x2a) { print "yes"; return 42 }
 
-There is initial support for variables, but only through primitives:
+Support for variables and functions is slowly maturing:
 
-        define "x" 6
-        define "y" (* x 7)
-        get "y"
-        define "f" (bind { return 42 })
-        funcall f
+        define "f" (bind { args "x"; return x })
+        f 42
 
-That's it for now.
+Presently we miss variables defined by `args` when cleaning up scope.

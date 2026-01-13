@@ -30,15 +30,16 @@ set:
   jsr stack_y_to_arg2
   jsr lookup_from_arg1  ; pointer in result
   bcs _done             ; lookup failed
-_copy:
-  ldy #2
-  lda arg2
-  sta (result),y
-  sta arg1              ; also store as return result
-  iny
-  lda arg2+1
-  sta (result),y
-  sta arg1+1
+  jsr copy_var
+;_copy:
+;  ldy #2
+;  lda arg2
+;  sta (result),y
+;  sta arg1              ; also store as return result
+;  iny
+;  lda arg2+1
+;  sta (result),y
+;  sta arg1+1
 _done:
   txs
   jmp thread_loop
@@ -52,7 +53,7 @@ define:
 
 do_define:
   jsr add_slot
-_copy:
+copy_var:
   tya
   pha
   ldy #3                ; Loop to set arg1,arg2 => name,value
@@ -63,7 +64,7 @@ _loop:
   bpl _loop
   pla
   tay
-  lda arg2              ; set value as result
+  lda arg2              ; set value as result (NOTE: successfully ignored in funcall)
   sta arg1
   lda arg2+1
   sta arg1+1
@@ -100,23 +101,20 @@ funcall:
   ldy #0
   lda (arg1),y
   cmp #$FF
-  bne _error
+  bne rt_error
   iny
   lda (arg1),y
   cmp #$FF
-  bne _error
+  bne rt_error
   iny
-  lda (arg1),y
+  lda (arg1),y          ; load func from closure var's value
   sta result
   iny
   lda (arg1),y
   sta result+1
-  ; Copy closure's value into arg1 where the eval_block primitive expects it as argument
-  lda result
-  sta arg1
-  lda result+1
-  sta arg1+1
-  ; TODO pass args to 'funcall fn' to the function, to be picked up by 'args'
+  pla
+  tay
+  ; Pass args to 'funcall fn' to the function, to be picked up by 'args'
   ;
   ; There are 2 general ways to do this:
   ; 1) Keep them on the (arg)stack
@@ -129,10 +127,25 @@ funcall:
   ;    - Let 'args' name these (note: no call to 'args' means no check!)
   ;    - if names < vars, delete excess values (so prefer last-as-last order) OR error
   ;    - if names > vars, add null vars OR error
-  
+  ;
+  ; Here we implemented option #2.
+_pass_args:
+  dec argc
+  bmi _args_done
+  lda #0                ; empty name
+  sta arg1
+  sta arg1+1
+  jsr stack_y_to_arg2_no_check
+  jsr do_define
+  jmp _pass_args
+_args_done:
+  lda result            ; function block to arg1
+  sta arg1
+  lda result+1
+  sta arg1+1
   ; The eval_block primitive should handle the rest for us
   jmp eval_block
-_error:
+rt_error:
   txs
   jmp syntax_error      ; TODO in practice this prints a double result
 
@@ -146,6 +159,51 @@ add_slot:
 _done:
   rts
 
+; TODO count arguments to 'args' toward number of defines in parser
+args:
+  inc argc              ; correct one off
+  tya
+  pha
+  ldy #0
+_count_slots:
+  lda (varptr),y        ; check for empty name (TODO what if at start of vars?)
+  iny
+  ora (varptr),y
+  bne _compare
+  iny
+  iny                   ; skip value
+  iny
+  jmp _count_slots
+_compare:
+  dey                   ; back to start of last non-empty var
+  tya
+  lsr a
+  lsr a
+  cmp argc              ; passed as many args as names?
+  bne rt_error
+_loop:
+  dey                   ; back to name pos
+  dey
+  dey
+  lda arg1+1
+  sta (varptr),y
+  dey
+  lda arg1
+  sta (varptr),y
+  sty tmp               ; switch y back to arg stack index
+  pla
+  tay
+  dec argc
+  beq _done
+  jsr stack_y_to_arg1_no_check
+  tya
+  pha
+  ldy tmp
+  jmp _loop
+_done:
+  txs
+  jmp thread_loop
+ 
 ; Lookup a variable slot
 ; Input:
 ; - y      -> offset from arg1 where variable name is stored

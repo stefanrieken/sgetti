@@ -190,6 +190,7 @@ stack_y_to_arg1_no_check:
 stack_y_to_arg2:
   dec argc
   bmi done_via_x
+stack_y_to_arg2_no_check:
   lda $0100,y
   sta arg2+1
   dey

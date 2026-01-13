@@ -1,5 +1,3 @@
-*=$0800
-
 init:
   lda #0
   sta stringmem
