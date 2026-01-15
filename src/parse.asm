@@ -36,9 +36,6 @@ repl:
 ;
 ; Parse code
 ;
-; Presently we can just parse either a number or a label
-; and provide some random feedback about it.
-;
 
 parse:
   tsx                   ; Save stack bottom to know if we still have (sub)expression data going

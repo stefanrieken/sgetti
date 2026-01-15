@@ -1,13 +1,5 @@
 ; Test that the interpreter can run a fixed program.
 
-; Currently made to compile for neo6502 with 64tass --nostart
-; Run on emulator by writing neo6502-firmware/bin/neo a.out@800 cold
-
-*=$800              ; neo6502 cold start address
-; Neo6502 Kernel API convenience macros
-;.include '../neo6502-firmware/examples/assembly/neo6502.asm.inc'
-WriteCharacter = $fff1
-
 init:
   lda #0
   sta stringmem
@@ -15,6 +7,8 @@ init:
   txs
 
 ; Make a unique string. Should end up at start of dynamic stringmem.
+  lda #'"'
+  sta tmp
   lda #<hello
   ldy #>hello
   jsr unique_string
@@ -24,7 +18,9 @@ init:
   sta ip
   lda #>program
   sta ip+1
-  jmp thread_loop
+  jsr thread_loop
+_endloop:
+  jmp _endloop
 
 hello:
   .text 15, "Hello from Sgetti!", 0

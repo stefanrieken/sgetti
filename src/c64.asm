@@ -1,20 +1,45 @@
-; Currently made to compile for neo6502 with 64tass --nostart
-; Run on emulator by writing neo6502-firmware/bin/neo a.out@800 cold
 
-*=$800              ; neo6502 cold start address
-
-; Neo6502 Kernel API convenience macros
-;.include '../neo6502-firmware/examples/assembly/neo6502.asm.inc'
+; Adapted from neo.asm for c64
 
 ReadLine=$FFEB
-ReadCharacter=$FFEE
-WriteCharacter = $FFF1
+ReadCharacter=$FFCF
+;WriteCharacter = $FFD2
 Parameters=$FF04
 WaitMessage=$FFF4
 SendMessage=$FFF7
 
-KSendMessage=$FC18
-KWaitMessage=$FC81
+*=$0801
+
+.enc "none"
+
+
+.word (+), 2026
+.null $9e, format("%4d", sysaddr)
++
+.word 0          ;basic line end
+
+sysaddr:
+
+; We still have to convert between ascii, petscii and screen codes,
+; probably by putting a function between the call to CHROUT. For now,
+; set screen to lowercase to get a semblance of readability on c64;
+; kernalemu doesn't mind.
+lda #23
+sta 53272
+
+jmp +
+WriteCharacter:
+  ; 64tass almost supports PETSCII, but I believe not quite if the host does ASCII
+  ; the major pest is upper and lowercase are switched, so fix that
+  cmp #$41
+  bcc _write
+  cmp #$7B
+  bcs _write
+  ; invert upper and lower case
+  eor #$20
+_write:
+  jmp $FFD2
++
 
 ;
 ; Memory allocation on the neo6502

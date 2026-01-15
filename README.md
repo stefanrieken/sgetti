@@ -57,9 +57,12 @@ construct called the 'RTS Trick' pushes the target address _minus one_ to the
 stack, and then calls `rts`, reducing the code to 9 bytes.
 
 ## Current state
-Sgetti currently compiles with the neo6502 emulator as a target (see the `run`
-Makefile target for details). It does not yet have a convenient way of passing
-in a test program; however, it can run all kinds of Pasta expressions:
+Sgetti currently compiles with the neo6502 emulator as a target; the test
+program can already run on the c64. (~see the `run` Makefile target for
+details).
+
+Sgetti still lacks a conventient way to pass in a test program. However, it can
+can already run all kinds of Pasta expressions:
 
         print "hello"; print "world"
         print "Hello, " (return "world") "!"
@@ -78,3 +81,4 @@ in a test program; however, it can run all kinds of Pasta expressions:
 
 The aim is to have lexical scoping, for which `bind` already produces a closure
 variable; however, we still have to add and skip parent pointers.
+
