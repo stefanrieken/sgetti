@@ -104,6 +104,7 @@ done:
   lda varptr
   clc
   adc tmp               ; Reset varstack to n defines before
+  sta varptr
   bcc +
   inc varptr+1
 +

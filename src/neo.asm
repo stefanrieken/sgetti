@@ -2,6 +2,7 @@
 ; Utility functions on the neo6502
 
 ReadLine=$FFEB
+ReadCharacter=$FFEE
 WriteCharacter = $FFF1
 Parameters=$FF04
 WaitMessage=$FFF4
@@ -32,7 +33,7 @@ varptr       = $0A ; Points to 'top' of varstack
 ; 1 byte
 argc         = $0C ; Parse: counts number of defines; eval: counts number of args
 tmp          = $0D ; General purpose temp (used by divide, parse, unique_string)
-strlen       = $0E ; TODO on neo6502 this is just linebuf[0]
+sep          = $0E ; Separator character (used in list)
 stackbottom  = $0F ; Holds 'bottom' of stack during parse
 
 ; Argument / result registers
@@ -52,7 +53,11 @@ multiplicand = arg1
 multiplier   = arg2
 ;result      = result
 
-
+; Registers for 16-bit utility functions
+src          = $18
+dst          = $1A
+tmp2         = $1C
+ 
 neo6502_breakpoint .macro
 .byte 3
 .endmacro
@@ -63,7 +68,7 @@ ldx #$FF
 txs
 
 ; Call an API function
-; Group 1, function 4: credits
+; Group 1, function: 4: credits
 ; Group 3, funcion 2: load file: Parameters 0,1 filename, Parameters 2,3 target address
 ;ldx #<filename
 ;stx Parameters

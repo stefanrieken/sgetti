@@ -22,11 +22,11 @@
 jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
   .text <return, <setb, <print, <if, <eval_block, <define, <get, <set, <bind, <funcall, <args
-  .text <add, <sub, <band, <bor, <xor, <bnot, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
+  .text <add, <sub, <band, <bor, <xor, <bnot, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot, <listp
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
   .text >return, >setb, >print, >if, >eval_block, >define, >get, >set, >bind, >funcall, >args
-  .text >add, >sub, >band, >bor, >xor, >bnot, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
+  .text >add, >sub, >band, >bor, >xor, >bnot, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot, >listp
 
 fixed_strings:
   .text 8, "return", 0
@@ -57,9 +57,10 @@ fixed_strings:
   .text 4, ">=", 0
   .text 4, "&&", 0
   .text 4, "||", 0
-  .text 3, "!", 0, 0
+  .text 3, "!", 0
+  .text 6, "list", 0, 0
 
-NUM_FIXED_STRINGS=28
+NUM_FIXED_STRINGS=30
 
 PRIM_PUSH0=0
 PRIM_PUSH1=1
@@ -102,6 +103,7 @@ PRIM_GTE=37
 PRIM_LAND=38
 PRIM_LOR=39
 PRIM_LNOT=40
+PRIM_LIST=42
 
 MAX_CORE=11
 
@@ -140,11 +142,11 @@ _done:
 
 ; utility callable versions of print & print error
 syntax_error:
-  lda #<stx_err
-  ldx #>stx_err
-print_ax:
-  sta arg1
-  stx arg1+1
+  ldy #<stx_err
+  lda #>stx_err
+print_ya:
+  sty arg1
+  sta arg1+1
 print_arg1:
   ldy #0
   lda (arg1),y  ; load size of string in A

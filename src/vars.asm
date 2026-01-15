@@ -16,6 +16,7 @@
 get:
   ; Have name in arg1
   jsr lookup_from_arg1
+  bcs rt_error
   ldy #2
   lda (result),y
   sta arg1
@@ -93,6 +94,10 @@ bind:
   sta arg1+1
   jmp thread_loop
 
+rt_error:
+  txs
+  jmp syntax_error      ; TODO in practice this prints a double result
+
 funcall:
   tya
   pha
@@ -145,9 +150,6 @@ _args_done:
   sta arg1+1
   ; The eval_block primitive should handle the rest for us
   jmp eval_block
-rt_error:
-  txs
-  jmp syntax_error      ; TODO in practice this prints a double result
 
 add_slot:
   lda varptr
@@ -206,12 +208,12 @@ _done:
  
 ; Lookup a variable slot
 ; Input:
-; - y      -> offset from arg1 where variable name is stored
-; - arg1+y -> name
+; - arg1 or result2 -> name. Call directly from 'lookup' not to affect arg1
 ; Result:
 ; - result -> pointer(!) to slot
+; - carry: set if not found
 ; Set or clear carry to indicate failure / success
-; Affects y
+; Affects y, result2
 lookup_from_arg1:
   ; Move arg1 to result2 as main 'lookup' is written so as not to affect arg1
   ; Impact on 'get' speed is minimal as as 'get' is not the usual way to lookup a var
@@ -249,7 +251,8 @@ _next:
   sta result
   lda result+1
   adc #0
-  bcs _loop             ; Always taken
+  sta result+1
+  jmp _loop
 _found:
   clc                   ; Found; clear carry as marker
   rts

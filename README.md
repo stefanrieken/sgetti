@@ -57,10 +57,9 @@ construct called the 'RTS Trick' pushes the target address _minus one_ to the
 stack, and then calls `rts`, reducing the code to 9 bytes.
 
 ## Current state
-Sgetti can currently evaluate primitive-based expressions and compiles with the
-neo6502 emulator as a target (see the `run` Makefile target for details).
-
-Here are a few expressions to try:
+Sgetti currently compiles with the neo6502 emulator as a target (see the `run`
+Makefile target for details). It does not yet have a convenient way of passing
+in a test program; however, it can run all kinds of Pasta expressions:
 
         print "hello"; print "world"
         print "Hello, " (return "world") "!"
@@ -70,9 +69,12 @@ Here are a few expressions to try:
         % 44 3
         if (= (* 6 7) 0x2a) { print "yes"; return 42 }
 
-Support for variables and functions is slowly maturing:
+        define "f" (bind {
+          args "x";
+          define "y" 7;
+          * x y
+        })
+        f 6
 
-        define "f" (bind { args "x"; return x })
-        f 42
-
-Presently we miss variables defined by `args` when cleaning up scope.
+The aim is to have lexical scoping, for which `bind` already produces a closure
+variable; however, we still have to add and skip parent pointers.

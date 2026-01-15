@@ -14,8 +14,6 @@ init:
   ldx #$FF
   txs
 
-;#neo6502_breakpoint
-
 repl:
   jsr parse             ; Read
 ; Add 'done 0' after prgtop to end program by rts;
@@ -48,13 +46,11 @@ parse:
 
   lda #$FF              ; Count args per subexpr on stack
   pha                   ; Start with -1 so we can start with an increment
-
   lda #0
   sta argc              ; Count the number of defines
 
 _next_line:
   jsr read_new_line
-
 _next_char:
   #next_char
 _have_char:             ; jump here if your last char may be the first of another arg
@@ -65,10 +61,9 @@ _have_char:             ; jump here if your last char may be the first of anothe
   adc #1
   pha
 ; test for end of line
-  tya
-  cmp strlen
   txa                   ; restore char to a
-  bcc _no_eol           ; if not end of line, continue to parsing
+  cmp #13               ; carriage return == eol?
+  bne _no_eol           ; if not end of line, continue to parsing
 
 ; Check if open brackets left
 ; If not, emit toplevel eval
@@ -77,18 +72,14 @@ _have_char:             ; jump here if your last char may be the first of anothe
   tsx                   ; check stack size to detect open brackets
   txa
   cmp stackbottom
-  beq _do_emit_eval
+  bne _have_brackets_open
+  jmp emit_eval         ; this one RTSes for us
 _have_brackets_open:
   lda arg1              ; restore last arg count on stack
   sec
   sbc #1                ; we incremented it without parsing an argument; so retract that
   pha
   jmp _next_line        ; and read another line (assuming we're here because end of line!)
-_do_emit_eval:
-  ldx #PRIM_EVAL
-  jsr emit_byte_cmd
-_done:
-  rts
 
 _no_eol:
 
@@ -104,8 +95,7 @@ _try_sep:
   bne _try_open_sub
   pla       ; pull n args
   sta arg1
-  ldx #PRIM_EVAL
-  jsr emit_byte_cmd
+  jsr emit_eval
   lda #$FF  ; start new arg count
   pha
   jmp _next_char
@@ -129,8 +119,7 @@ _try_close_sub:
   txs
   jmp parse
 _emit_eval:
-  ldx #PRIM_EVAL
-  jsr emit_byte_cmd
+  jsr emit_eval
   ldx #PRIM_PUSH_RESULT
   jsr emit_byte
   jmp _next_char
@@ -173,8 +162,7 @@ _try_close_blk:
 _insert_target:
   lda tmp               ; arg count of last expression
   sta arg1
-  ldx #PRIM_EVAL
-  jsr emit_byte_cmd
+  jsr emit_eval
   lda argc              ; number of defines
   sta arg1
   ldx #PRIM_DONE
@@ -287,9 +275,17 @@ _prim:
   bne +
   inc argc              ; 'bind' also produces a (closure) variable
 +
+  cmp #PRIM_ARGS
+  bne +
+  lda argc
+  ora #$80               ; set msb to mark that we're parsing 'args'
+  sta argc
+  lda #PRIM_ARGS        ; and back to the prim value
++
   tax
   jsr emit_byte
-  jmp _next_char        ; discard delimiting space (TODO assuming it is a space!)
+  dey                   ; we kind of messed up the last non-digit char, but this is an easy fix
+  jmp _next_char
 _no_prim:
   pla
   cmp #0
@@ -304,6 +300,7 @@ _ref_only
   pha
   ldx #PRIM_REFB
   jsr emit_optimized_cmd
+  dey                   ; we kind of messed up the last non-digit char, but this is an easy fix
   jmp _next_char
 _syntax_error:
   jsr syntax_error      ; TODO retract emitted values in this line
@@ -322,9 +319,9 @@ parse_string_or_label:
   sta stringbuf,x
 _next_char:
   #next_char
-  cmp tmp ; either quote or space
+  cmp tmp
   beq _label_done
-  cmp #13 ; newline
+  cmp #13               ; check against newline
   beq _label_done
   inx
   sta stringbuf,x
@@ -358,26 +355,35 @@ read_new_line:
   ldx #<linebuf
   ldy #>linebuf
   jsr ReadLine
-
 ; Line is returned as a length prefixed string pointed to by parameters 0 and 1
 ; So copy that pointer to zero page so we can follow it
+; This is just our own pointer, but using lineptr might give us a better chance
+; to implement reading code as text from memory.
   lda Parameters+0
   sta lineptr
   lda Parameters+1
   sta lineptr+1
-
-; Store string length
   ldy #$0
   lda (lineptr),y
-  clc
-  adc #1
-  sta strlen
-; Debug string length (as offset from ASCII character '0')
-;clc
-;adc #$30
-;jsr WriteCharacter
-;sec
-;sbc #$30
-
+  tay
+  iny
+  lda #13               ; Use CR for EOL to match c64's CHRIN input
+  sta (lineptr),y
+  ldy #0                ; Restore char index
   rts
 
+; n args must be in arg1
+emit_eval:
+  lda argc              ; load number of defines
+  and #$80              ; was msb set to mark we're parsing 'args'?
+  beq +
+  lda arg1              ; load number of args
+  clc
+  adc argc              ; add n args to n defines
+  sbc #0                ; minus one (due to carry = 0)
+  and #$7F              ; remove mark
+  sta argc              ; put back for PRIM_DONE to find later
++
+  ldx #PRIM_EVAL
+  jsr emit_byte_cmd
+  rts

@@ -280,7 +280,7 @@ _lt
   bne _next_bit
   rts
 
-; Print a number in base <dividend>
+; Print a number in base <divisor>
 ;
 ; Base 8 or 16 would be easy (just shift out 3/4 bits at the time),
 ; but base 10 needs a more mathematical approach.
