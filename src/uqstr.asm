@@ -59,7 +59,10 @@ _switch_to_stringmem:   ; switch from static to dynamic string memory
 _new_ustring:
     lda tmp
     cmp #'"'
+    beq +
+    sec
     bne _done           ; if label, it must exist!
++
     ; transfer from arg1 to arg2; zero terminated
     ldy #$FF
 _loop:

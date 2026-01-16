@@ -163,5 +163,5 @@ _str_done:
   rts
 
 stx_err:
-  .text 15, "[?]", 13, 0
+  .text 6, "[?]", 13, 0
 

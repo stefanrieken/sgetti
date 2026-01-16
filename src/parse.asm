@@ -61,7 +61,6 @@ _have_char:             ; jump here if your last char may be the first of anothe
   txa                   ; restore char to a
   cmp #13               ; carriage return == eol?
   bne _no_eol           ; if not end of line, continue to parsing
-  jsr WriteCharacter
 ; Check if open brackets left
 ; If not, emit toplevel eval
   pla                   ; pull n args
@@ -87,6 +86,7 @@ _skip_whitespace:
   bne _try_sep
   #next_char
   jmp _skip_whitespace
+
 _try_sep:
   cmp #';'
   bne _try_open_sub
@@ -99,6 +99,9 @@ _try_sep:
 _try_open_sub:
   cmp #'('
   bne _try_close_sub
+  tax
+  #sanity_check
+  txa
   pha       ; for bracket matching
   lda #$FF  ; start new arg count
   pha
@@ -111,10 +114,7 @@ _try_close_sub:
   pla
   cmp #'('              ; matching bracket?
   beq _emit_eval
-  jsr syntax_error      ; TODO retract emitted values in this line (save prgtop just like stackbottom)
-  ldx stackbottom
-  txs
-  jmp parse
+  jmp parse_error
 _emit_eval:
   jsr emit_eval
   ldx #PRIM_PUSH_RESULT
@@ -124,6 +124,7 @@ _try_open_blk:
   cmp #'{'
   bne _try_close_blk
   tax                   ; save opening bracket in x
+  #sanity_check
   lda argc              ; save current num of defines (so not the one of the block!)
   pha
   lda #0                ; start new defines count for within block
@@ -147,10 +148,7 @@ _try_close_blk:
   pla                   ; bracket match
   cmp #'{'
   beq +
-  jsr syntax_error  ; TODO retract emitted values in this line (save prgtop just like stackbottom)
-  ldx stackbottom
-  txs
-  jmp parse
+  jmp parse_error
 +
   pla                   ; get insertion point from stack
   sta arg2
@@ -236,6 +234,7 @@ _done_adjusting:
   bcs _more_digits      ; always taken
 _num_done:
   #unread               ; last char was not a digit
+  #sanity_check
   ldx #PRIM_PUSHB
   jsr emit_optimized_cmd
   jmp _next_char
@@ -248,6 +247,7 @@ _parse_string:
   sta tmp               ; store quote to signal string
   #next_char
   jsr parse_string_or_label
+  #sanity_check
   ldx #PRIM_STRB
   jsr emit_optimized_cmd
   jmp _next_char        ; discard closing '"' that was already parsed
@@ -256,8 +256,8 @@ _parse_label:
   ldx #$20              ; space delimits label
   stx tmp
   jsr parse_string_or_label
-  #unread               ; last char was not a label char
-  bcs _no_prim          ; carry marks unknown unique string, so this cannot be a known label
+  #unread               ; final char was not a label char
+  bcs parse_error       ; carry marks no existing label found
   lda result+1
   bne _no_prim          ; a string index with msb>0 will not be a core string
   lda result
@@ -284,25 +284,20 @@ _prim:
   jsr emit_byte
   jmp _next_char
 _no_prim:
-  pla
-  cmp #0
-  bne _ref_only
+  pla                    ; have non primitive label
+  cmp #0                 ; are we at first arg?
   pha
+  bne _ref_only          ; then funcall it is
   ldx #PRIM_FUNCALL
   jsr emit_byte
   pla
   clc
   adc #1
-_ref_only
   pha
+_ref_only
   ldx #PRIM_REFB
   jsr emit_optimized_cmd
   jmp _next_char
-_syntax_error:
-  jsr syntax_error      ; TODO retract emitted values in this line
-  ldx stackbottom
-  txs
-  jmp parse
 
 ;
 ; Parse string or label
@@ -323,7 +318,7 @@ _next_char:
   sta stringbuf,x
   jmp _next_char
 _label_done:
-  sta linebuf           ; to return final char TODO less arbitrary spot
+  pha                   ; to return final char
   inx
   lda #$0
   sta stringbuf,x
@@ -337,21 +332,20 @@ _label_done:
   jsr unique_string
   pla                   ; restore y
   tay
-  lda linebuf
+  pla                   ; final char not used
   rts
 
-; n args must be in arg1
-emit_eval:
-  lda argc              ; load number of defines
-  and #$80              ; was msb set to mark we're parsing 'args'?
-  beq +
-  lda arg1              ; load number of args
-  clc
-  adc argc              ; add n args to n defines
-  sbc #0                ; minus one (due to carry = 0)
-  and #$7F              ; remove mark
-  sta argc              ; put back for PRIM_DONE to find later
+parse_error:
+  #flush
+  jsr syntax_error      ; TODO retract emitted values in this line (save prgtop just like stackbottom)
+  ldx stackbottom
+  txs
+  jmp parse
+
+sanity_check .macro
+  pla                   ; Literal or brackets at start of expr? No good!
+  bne +
+  jmp parse_error
 +
-  ldx #PRIM_EVAL
-  jsr emit_byte_cmd
-  rts
+  pha
+.endmacro

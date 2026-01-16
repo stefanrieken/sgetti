@@ -100,3 +100,6 @@ unread .macro
   dey
 .endmacro
 
+flush .macro
+.endmacro
+

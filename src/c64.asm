@@ -70,7 +70,7 @@ varptr       = $2A ; Points to 'top' of varstack
 ; 1 byte
 argc         = $2C ; Parse: counts number of defines; eval: counts number of args
 tmp          = $2D ; General purpose temp (used by divide, parse, unique_string)
-sep          = $2E ; Separator character (used in list)
+sep          = $2E ; Separator character (used in list); also used in c64 as temp char
 stackbottom  = $2F ; Holds 'bottom' of stack during parse
 
 ; Argument / result registers
@@ -99,8 +99,8 @@ neo6502_breakpoint .macro
 ;
 
 read_new_line:
-;  lda #13
-;  jsr WriteCharacter
+   lda #0
+   sta sep
   rts
 
 read_char:
@@ -110,7 +110,12 @@ read_char:
   sty sep
   rts
 +
-  jmp ReadCharacter
+  jsr ReadCharacter
+  cmp #13
+  bne +
+  jsr WriteCharacter
++
+  rts
 
 next_char .macro
   jsr read_char
@@ -118,4 +123,11 @@ next_char .macro
 
 unread .macro
   sta sep
+.endmacro
+
+flush .macro
+-
+  jsr read_char
+  cmp #13
+  bne -
 .endmacro
