@@ -56,16 +56,29 @@ jump from the latter. This alone takes up between 13-15 bytes. An alternative
 construct called the 'RTS Trick' pushes the target address _minus one_ to the
 stack, and then calls `rts`, reducing the code to 9 bytes.
 
+## Character sets
+The C64 uses the PETSCII character set, which is based on early ASCII. Most
+notably, it has upper- and lowercase reversed and it doesn't know accolades
+(amongst others). By specifying an encoding in 64tass, `{}` are mapped to`[]`,
+amongst others.
+
+### Kernalemu
+Kernalemu is [a cool project](https://github.com/mist64/kernalemu) that can run
+all kinds of CBM software on the command line.
+
+To an extent it does its own character set translation, but this is all geared
+towards its (screen) output, leaving the input reverse-case and requiring you
+to SHOUT your commands. I have patched it to flip the case back, and also to
+map `{}` and `|` redundantly back onto `[]` and backslash (or the pound sign)
+so that both alternatives are accepted for input. As these alternatives do not
+exist on the C64 / PET, there is no particular downside to this mapping.
+
 ## Current state
-Sgetti compiles and runs on both the neo6502 emulator and the c64.  (See the
-`run` Makefile target for details).
+Sgetti compiles and runs on both the neo6502 emulator and the c64, as well as
+on Kernalemu. (See the `run` Makefile target for details).
 
-The c64 requires some adjustments to the character set: most notably, `{}`
-had to be replaced with `[]`. While this works out well on the c64, it
-confuses the otherwise rather convenient `kernalemu` program. Because of this,
-Sgetti still lacks a conventient way to pass in a proper test program.
-
-However, it can already run all kinds of Pasta expressions:
+It still lacks a conventient way to pass in a proper test program. However, it
+can already run all kinds of Pasta expressions:
 
         print "hello"; print "world"
         print "Hello, " (return "world") "!"

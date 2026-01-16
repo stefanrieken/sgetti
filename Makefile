@@ -1,4 +1,4 @@
-all: sgetti65.bin sgetti64.prg test65.bin
+all: sgetti65.bin sgetti64.prg
 
 sgetti65.bin: src/neo.asm src/parse.asm src/emit.asm src/eval.asm src/base.asm src/int.asm src/vars.asm src/uqstr.asm src/list.asm
 	cat $^ > tmp.asm # overcome a multi file symbol retainment bug
@@ -13,13 +13,13 @@ test64: src/c64.asm src/test.asm src/eval.asm src/base.asm src/int.asm src/vars.
 	echo ".endencode" >> tmp.asm
 	64tass -Wall -C tmp.asm -o sgetti64.prg -l labels.txt
 
-sgetti64: src/c64.asm src/parse.asm src/emit.asm src/eval.asm src/base.asm src/int.asm src/vars.asm src/uqstr.asm src/list.asm
+sgetti64.prg: src/c64.asm src/parse.asm src/emit.asm src/eval.asm src/base.asm src/int.asm src/vars.asm src/uqstr.asm src/list.asm
 	cat $^ > tmp.asm # overcome a multi file symbol retainment bug
 	echo ".endencode" >> tmp.asm
 	64tass -Wall -C tmp.asm -o sgetti64.prg -l labels.txt
 
 run65: sgetti65.bin
-	../neo6502-firmware/bin/neo sgetti.bin@800 cold
+	../neo6502-firmware/bin/neo sgetti65.bin@800 cold
 
 # Run with VICE: x64 test64.prg
 # Or run with kernalemu, which is a fun project

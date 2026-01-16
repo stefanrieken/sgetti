@@ -1,3 +1,6 @@
+;
+; C64 specific values and functions
+;
 
 ; Adapted from neo.asm for c64
 
@@ -10,9 +13,10 @@ WriteCharacter = $FFD2
 ; So we do it here. This only affects compile time characters.
 
 
-; According to the Internet, BASIC starts at $0800+1
+; Ever since the early PETs, BASIC starts at page+1
 ; simply due to RUN / GOTO probably pre-incrementing.
 ; This also causes the odd "38911 BASIC bytes free".
+
 *=$0801
 
 ; BASIC header with sys command
@@ -23,20 +27,19 @@ WriteCharacter = $FFD2
 
 mapscii .encode
 .cdef " @", $20 ; Alphanumeric block: unchanged
-.cdef "AZ", $C1 ; Uppercase characters to position of lowercase
-.cdef "az", $41 ; Lowercase characters to position of uppercase
-.cdef "{}", $5B ; not available in PETSCII; fall back to '[]' and pound sign for '|'
-.tdef '[', $5B ; retain '[' as-is in spite of also being '{'
-.tdef '^', $6E ; not available in PETSCII; fall back to arrow up
-.tdef ']', $5D ; retain ']' as-is in spite of also being '}'
-.tdef '~', $6F ; not available in PETSCII; fall back to arrow left
+.cdef "AZ", $C1 ; Switch A-Z -> az
+.cdef "az", $41 ; Switch a-z -> A-Z
+.cdef "[`", $5B ; Keep [\] and ^_ (last become arrows up and left; on c64 backslash is pound)
+; Unfortunately we can't cdef redundant mappings, so tdef these:
+.tdef '{', $5B  ; onto '['
+.tdef '|', $5C  ; onto backslash or pound (PET / C64)
+.tdef '}', $5D  ; onto ']'
+.tdef '~', $5D  ; onto arrow up; TODO interferes with '^'
 
 start:
 
-; We still have to convert between ascii, petscii and screen codes,
-; probably by putting a function between the call to CHROUT. For now,
-; set screen to lowercase to get a semblance of readability on c64;
-; kernalemu doesn't mind.
+; Set screen to lowercase to get a semblance of readability on c64.
+; On Kernalemu you have to SCREAM anyway.
 lda #23
 sta 53272
 lda #0
@@ -87,7 +90,7 @@ multiplicand = arg1
 multiplier   = arg2
 ;result      = result
 
-; No such thing as a breakpoint
+; No such thing as a breakpoint on c64
 neo6502_breakpoint .macro
 .endmacro
 
@@ -96,6 +99,8 @@ neo6502_breakpoint .macro
 ;
 
 read_new_line:
+;  lda #13
+;  jsr WriteCharacter
   rts
 
 read_char:
