@@ -58,6 +58,8 @@ list_done:
   lda #13
   jsr WriteCharacter
   txs
+  lda #$0               ; same field is used in parse, so clean up
+  sta sep
   jmp thread_loop
 
 next_list_byte:

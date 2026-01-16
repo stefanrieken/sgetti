@@ -2,8 +2,10 @@
 ; Run on emulator by writing neo6502-firmware/bin/neo a.out@800 cold
 
 *=$800              ; neo6502 cold start address
+jmp init
 
 ; Neo6502 Kernel API convenience macros
+; An alternative way to define these is:
 ;.include '../neo6502-firmware/examples/assembly/neo6502.asm.inc'
 
 ReadLine=$FFEB
@@ -59,12 +61,42 @@ multiplicand = arg1
 multiplier   = arg2
 ;result      = result
 
-; Registers for 16-bit utility functions
-src          = $18
-dst          = $1A
-tmp2         = $1C
- 
 neo6502_breakpoint .macro
 .byte 3
+.endmacro
+
+;
+; Read / Write functions
+;
+
+read_new_line:
+  ; Apparently we define where the input comes using x, y.
+  ldx #<linebuf
+  ldy #>linebuf
+  jsr ReadLine
+; Line is returned as a length prefixed string pointed to by parameters 0 and 1
+; So copy that pointer to zero page so we can follow it
+; This is just our own pointer, but using lineptr might give us a better chance
+; to implement reading code as text from memory.
+  lda Parameters+0
+  sta lineptr
+  lda Parameters+1
+  sta lineptr+1
+  ldy #$0
+  lda (lineptr),y
+  tay
+  iny
+  lda #13               ; Use CR for EOL to match c64's CHRIN input
+  sta (lineptr),y
+  ldy #0                ; Restore char index
+  rts
+
+next_char .macro
+  iny
+  lda (lineptr),y
+.endmacro
+
+unread .macro
+  dey
 .endmacro
 

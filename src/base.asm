@@ -129,6 +129,19 @@ setb: ; 'setb 0x1234 42'
   sty arg1+1
   txs ; restore stack
   jmp thread_loop
+getb:
+  ldy #1
+-
+  lda (arg1),y
+  sta arg2
+  dey
+  bne -
+  lda arg2
+  sta arg1
+  lda arg2+1
+  sta arg1+1
+  txs ; restore stack
+  jmp thread_loop
 print: ; print a unique_string or similarly formatted string
   tya
   pha ; stash arg idx

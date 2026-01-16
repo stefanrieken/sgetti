@@ -11,7 +11,7 @@ init:
   sta varptr
   lda #>vars_end
   sta varptr+1
-  ldx #$FF
+  ldx #$FF ; TODO does CHRGET use top of stack?
   txs
 
 repl:
@@ -61,7 +61,7 @@ _have_char:             ; jump here if your last char may be the first of anothe
   txa                   ; restore char to a
   cmp #13               ; carriage return == eol?
   bne _no_eol           ; if not end of line, continue to parsing
-
+  jsr WriteCharacter
 ; Check if open brackets left
 ; If not, emit toplevel eval
   pla                   ; pull n args
@@ -232,12 +232,12 @@ _done_adjusting:
   adc multiplicand
   sta multiplicand
   bcc _more_digits
-  inc multiplicand
+  inc multiplicand+1
   bcs _more_digits      ; always taken
 _num_done:
+  #unread               ; last char was not a digit
   ldx #PRIM_PUSHB
   jsr emit_optimized_cmd
-  dey                   ; we kind of messed up the last non-digit char, but this is an easy fix
   jmp _next_char
 
 _nan:
@@ -256,6 +256,7 @@ _parse_label:
   ldx #$20              ; space delimits label
   stx tmp
   jsr parse_string_or_label
+  #unread               ; last char was not a label char
   bcs _no_prim          ; carry marks unknown unique string, so this cannot be a known label
   lda result+1
   bne _no_prim          ; a string index with msb>0 will not be a core string
@@ -281,7 +282,6 @@ _prim:
 +
   tax
   jsr emit_byte
-  dey                   ; we kind of messed up the last non-digit char, but this is an easy fix
   jmp _next_char
 _no_prim:
   pla
@@ -297,7 +297,6 @@ _ref_only
   pha
   ldx #PRIM_REFB
   jsr emit_optimized_cmd
-  dey                   ; we kind of messed up the last non-digit char, but this is an easy fix
   jmp _next_char
 _syntax_error:
   jsr syntax_error      ; TODO retract emitted values in this line
@@ -309,7 +308,7 @@ _syntax_error:
 ; Parse string or label
 ;
 ; Pass end char in tmp
-; Return values as defined by unique_string
+; Return values as defined by unique_string; final char in a
 
 parse_string_or_label:
   ldx #$1
@@ -324,6 +323,7 @@ _next_char:
   sta stringbuf,x
   jmp _next_char
 _label_done:
+  sta linebuf           ; to return final char TODO less arbitrary spot
   inx
   lda #$0
   sta stringbuf,x
@@ -337,36 +337,7 @@ _label_done:
   jsr unique_string
   pla                   ; restore y
   tay
-  rts
-
-next_char .macro
-  iny
-  lda (lineptr),y
-;jsr WriteCharacter
-.endmacro
-
-; Read new line and set Y and strlen accordingly
-
-read_new_line:
-  ; Apparently we define where the input comes using x, y.
-  ldx #<linebuf
-  ldy #>linebuf
-  jsr ReadLine
-; Line is returned as a length prefixed string pointed to by parameters 0 and 1
-; So copy that pointer to zero page so we can follow it
-; This is just our own pointer, but using lineptr might give us a better chance
-; to implement reading code as text from memory.
-  lda Parameters+0
-  sta lineptr
-  lda Parameters+1
-  sta lineptr+1
-  ldy #$0
-  lda (lineptr),y
-  tay
-  iny
-  lda #13               ; Use CR for EOL to match c64's CHRIN input
-  sta (lineptr),y
-  ldy #0                ; Restore char index
+  lda linebuf
   rts
 
 ; n args must be in arg1
