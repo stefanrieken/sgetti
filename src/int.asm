@@ -140,20 +140,22 @@ lt:
   bcs nope
 gt:
   jsr do_sub ; have arg1+1 result in a
-  bcs nope
+  bcc nope
   ora arg1   ; any of these have 1's?
   beq nope
   bne yup
 lte:
-  jsr do_sub ; have arg1+1 result in a
+  jsr do_sub
   bcs yup
   ora arg1   ; any of these have 1's?
   beq yup
   bne nope
 gte:
-  jsr do_sub
-  bcc yup
-  bcs nope
+  jsr do_sub ; have arg1+1 result in a
+  bcs yup
+  ora arg1   ; any of these have 1's?
+  beq yup
+  bne nope
 land:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
   jsr stack_y_to_arg2 ; and trust this function to exit when no more args
