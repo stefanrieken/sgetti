@@ -5,7 +5,7 @@
 add:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
   dec argc
-  bmi done_via_x2 ; but don't rely on having more parameters on stack
+  bmi done_via_x ; but don't rely on having more parameters on stack
   clc
   lda arg1
   adc $00FF,y
@@ -30,7 +30,7 @@ sub:
 
 do_sub:
   dec argc
-  bmi done_via_x2 ; but don't rely on having more parameters on stack
+  bmi done_via_x ; but don't rely on having more parameters on stack
   sec
   lda arg1
   sbc $00FF,y
@@ -62,27 +62,28 @@ bor:
   ora $0100,y
   jmp multi_arg_tail
 
-xor:
+; Combine two functions so that missing PETSCII character `~`
+; can fall back onto `^` (actually, arrow up) without featire loss.
+xor_or_not:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
   dec argc
-  bmi done_via_x2 ; but don't rely on having more parameters on stack
+  bpl _loop
+  lda #$FF               ; if only 1 arg, treat as 'not' == ^ arg1 0xFFFF
+  pha
+  pha
+_loop:
+  dec argc
   lda arg1
   eor $00FF,y
   sta arg1
   lda arg1+1
   eor $0100,y
-  jmp multi_arg_tail
-
-bnot:
-  lda arg1
-  eor #$FF
-  sta arg1
-  lda arg1+1
-  eor #$FF
   sta arg1+1
-done_via_x2:   ; shared tail
-  txs
-  jmp thread_loop
+  dey
+  dey
+  dec argc
+  bpl _loop
+  bmi done_via_x2
 
 times:
   ; trust that 'eval' has put first arg in arg1 for us; otherwise produce garbage out
@@ -119,6 +120,7 @@ rem:
   sta arg1
   lda result2+1
   sta arg1+1
+done_via_x2:   ; shared tail
   txs
   jmp thread_loop ; no use for repeated arguments with remainder
 

@@ -202,13 +202,13 @@ _more_digits:
   bcc _num_done ; < '0'
   cmp #'9'+1
   bcc _done_adjusting
-  cmp #'a'
-  bcc _try_uppercase      ; if < 'a'
+  cmp #$61                ; 'a' (ASCII) or 'A' (PETSCII)
+  bcc _try_other_case     ; if < 'a'
   sbc #$20                ; adjust to uppercase
-_try_uppercase:
-  cmp #'A'
+_try_other_case:
+  cmp #$41                ; 'A' (ASCII) or 'a' (PETSCII)
   bcc _num_done
-  cmp #'Z'+1              ; should realistically be 'F', but hey, we may support other bases some day
+  cmp #$5A+1              ; 'Z'; should realistically be 'F', but hey, we may support other bases some day
   bcs _num_done           ; not even in A-Z
   sec
   sbc #7                  ; make 'A'..'Z' go next to '9'

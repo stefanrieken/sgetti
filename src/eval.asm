@@ -22,11 +22,11 @@
 jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
   .text <return, <getb, <setb, <print, <if, <eval_block, <define, <get, <set, <bind, <funcall, <args, <listp
-  .text <add, <sub, <band, <bor, <xor, <bnot, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
+  .text <add, <sub, <band, <bor, <xor_or_not, <xor_or_not, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
   .text >return, >getb, >setb, >print, >if, >eval_block, >define, >get, >set, >bind, >funcall, >args, >listp
-  .text >add, >sub, >band, >bor, >xor, >bnot, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
+  .text >add, >sub, >band, >bor, >xor_or_not, >xor_or_not, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
 
 fixed_strings:
   .text 8, "return", 0

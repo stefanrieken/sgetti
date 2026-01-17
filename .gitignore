@@ -2,4 +2,5 @@ labels.txt
 memory.dump
 *.bin
 *.prg
+*.d64
 tmp.asm
