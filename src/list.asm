@@ -31,11 +31,11 @@ _not_done:
 _expr_prim:
   lda argc
   beq +
-  inc argc
   jsr print_sep
   lda #'('
   sta sep              ; because we are going to print a separator
 +
+  inc argc
   tya
   cmp #PRIM_FUNCALL
   bne +
