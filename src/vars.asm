@@ -27,10 +27,10 @@ get:
   jmp thread_loop
 
 set:
-  ; Have name in arg1; place value in arg2
+  ; Have name in arg1    ; place value in arg2
   jsr stack_y_to_arg2
-  jsr lookup_from_arg1  ; pointer in result
-  bcs _done             ; lookup failed
+  jsr lookup_from_arg1   ; pointer in result
+  bcs _done              ; lookup failed
   jsr copy_var
 ;_copy:
 ;  ldy #2

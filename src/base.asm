@@ -185,6 +185,38 @@ eval_block:           ; eval block
   sta ip+1
   jmp thread_loop     ; continue as usual
 
+
+loop:
+  ; Have arg1 which is (should be!) the block
+  txs                    ; Restore stack to rebuild it in different order
+  lda ip+1               ; save current ip first
+  pha
+  lda ip
+  pha
+  lda arg1+1            ; then save block
+  pha
+  lda arg1
+  pha
+_eval:
+  tsx                   ; re-load block from stack
+  lda $0101,x           ; while retaining it on stack
+  sta ip
+  lda $0102,x
+  lda ip+1              ; save block to find it back after 'eval'
+  jsr thread_loop       ; run the block
+  lda arg1              ; is return value 0 == false?
+  bne _eval
+  cmp arg1+1            ; also 0 in msb?
+  bne _eval
+_done:
+  pla                   ; then block can come off the stack
+  pla
+  pla                   ; set ip back to own ip
+  sta ip
+  pla
+  sta ip+1
+  jmp thread_loop
+
 ; store word on stack,y into arg1
 ; and decrement y
 stack_y_to_arg1:

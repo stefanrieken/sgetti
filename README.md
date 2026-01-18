@@ -8,6 +8,14 @@ against the Commodore 64 and Neo6502 (by means of their emulators).
 developed with fantasy consoles in mind. It effectively offers LISP-level
 expressiveness on BASIC-like system constraints.
 
+Here's a "Hello, World" in Pasta:
+
+        define "greet" (bind {
+          args "who";
+          print "Hello, " who "!"
+        })
+        greet "world"
+
 ## Threaded code
 Pasta's original interpreter runs on a minimalistic 4-instruction byte code,
 partially designed to feel a bit like a simple 8-bit machine.
@@ -35,7 +43,7 @@ to something like:
         print STR "hello" REF x EVAL 3
 
 Where `print` is a primitive reference, `STR`, `REF` and `EVAL` are core engine
-instructions, and the values `"hello"` and `x` are actually a string pointer,
+instructions, and the values `"hello"` and `x` are actually a string pointer
 and an index.
 
 ### Primitive-first approach
@@ -45,7 +53,8 @@ different from the original Pasta interpreter, where only through variable and
 function code resolution one may eventually stumble upon a primitive reference.
 
 Ultimately it should make little difference apart from overriding primitives;
-this now requires var stack analysis to properly detect at compile time.
+this now requires var stack analysis to properly detect and allow at compile
+time.
 
 ## Hardware specific challenges
 ### The 6502
@@ -89,7 +98,7 @@ the `{}` area, so that both alternatives are accepted for input.
 
 Equally cool is the
 [Terminal Mode Commodore Emulator](https://github.com/kobolt/tmce64),
-which aproxximates PETSCII art using ASCII.
+which approximates PETSCII art using ASCII.
 
 ## Current state
 Sgetti compiles and runs on both the neo6502 emulator and the c64, as well as

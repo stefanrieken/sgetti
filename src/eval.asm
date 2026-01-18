@@ -21,11 +21,11 @@
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
-  .text <return, <getb, <setb, <print, <if, <eval_block, <define, <get, <set, <bind, <funcall, <args, <listp
+  .text <return, <getb, <setb, <print, <if, <eval_block, <loop, <define, <get, <set, <bind, <funcall, <args, <listp
   .text <add, <sub, <band, <bor, <xor_or_not, <xor_or_not, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
-  .text >return, >getb, >setb, >print, >if, >eval_block, >define, >get, >set, >bind, >funcall, >args, >listp
+  .text >return, >getb, >setb, >print, >if, >eval_block, >loop, >define, >get, >set, >bind, >funcall, >args, >listp
   .text >add, >sub, >band, >bor, >xor_or_not, >xor_or_not, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
 
 fixed_strings:
@@ -35,6 +35,7 @@ fixed_strings:
   .text 7, "print", 0
   .text 4, "if", 0
   .text 6, "eval", 0
+  .text 6, "loop", 0
   .text 8, "define", 0
   .text 5, "get", 0
   .text 5, "set", 0
@@ -61,7 +62,7 @@ fixed_strings:
   .text 4, "||", 0
   .text 3, "!", 0, 0
 
-NUM_FIXED_STRINGS=31
+NUM_FIXED_STRINGS=32
 
 PRIM_PUSH0=0
 PRIM_PUSH1=1
@@ -81,31 +82,32 @@ PRIM_SETB=14
 PRIM_PRINT=15
 PRIM_IF=16
 PRIM_EVAL_BLOCK=17
-PRIM_DEFINE=18
-PRIM_GET=19
-PRIM_SET=20
-PRIM_BIND=21
-PRIM_FUNCALL=22
-PRIM_ARGS=23
-PRIM_LIST=24
-PRIM_ADD=25
-PRIM_SUB=26
-PRIM_AND=27
-PRIM_OR=28
-PRIM_XOR=29
-PRIM_NOT=30
-PRIM_TIMES=31
-PRIM_DIV=32
-PRIM_REM=33
-PRIM_EQ=34
-PRIM_NE=35
-PRIM_LT=36
-PRIM_GT=37
-PRIM_LTE=38
-PRIM_GTE=39
-PRIM_LAND=40
-PRIM_LOR=41
-PRIM_LNOT=42
+PRIM_LOOP=18
+PRIM_DEFINE=19
+PRIM_GET=20
+PRIM_SET=21
+PRIM_BIND=22
+PRIM_FUNCALL=23
+PRIM_ARGS=24
+PRIM_LIST=25
+PRIM_ADD=26
+PRIM_SUB=27
+PRIM_AND=28
+PRIM_OR=29
+PRIM_XOR=30
+PRIM_NOT=31
+PRIM_TIMES=32
+PRIM_DIV=33
+PRIM_REM=34
+PRIM_EQ=35
+PRIM_NE=36
+PRIM_LT=37
+PRIM_GT=38
+PRIM_LTE=39
+PRIM_GTE=40
+PRIM_LAND=41
+PRIM_LOR=42
+PRIM_LNOT=43
 
 MAX_CORE=11
 

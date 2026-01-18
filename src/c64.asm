@@ -8,10 +8,6 @@ ReadCharacter=$FFCF
 ;ReadCharacter=$0073 ; somehow the zp version won't work for us here
 WriteCharacter = $FFD2
 
-; 64tass supports encoding "none" and "screen" out of the box.
-; Neither of these caters for mapping modern ASCII to PETSCII.
-; So we do it here. This only affects compile time characters.
-
 
 ; Ever since the early PETs, BASIC starts at page+1
 ; simply due to RUN / GOTO probably pre-incrementing.
@@ -24,6 +20,10 @@ WriteCharacter = $FFD2
 .null $9e, format("%4d", start)
 +
 .word 0          ;basic line end
+
+; 64tass supports encoding "none" and "screen" out of the box.
+; Neither of these caters for mapping modern ASCII to PETSCII.
+; So we do it here. This only affects compile time characters.
 
 mapscii .encode
 .cdef " @", $20 ; Alphanumeric block: unchanged
@@ -48,7 +48,7 @@ sta sep
 jmp init
 
 ;
-; Memory allocation on the neo6502
+; Memory allocation on the C64
 ;
 
 linebuf   = $0200  ; Say where ReadLine puts its results (max 255 bytes / screen width)

@@ -27,4 +27,4 @@ run64: sgetti64.prg
 	../kernalemu/build/kernalemu sgetti64.prg -text
 
 clean:
-	rm -rf tmp.asm sgetti.bin labels.txt memory.dump *.prg
+	rm -rf tmp.asm labels.txt memory.dump *.bin *.prg
