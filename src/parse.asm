@@ -50,6 +50,20 @@ _next_line:
   jsr read_new_line
 _next_char:
   #next_char
+_skip_whitespace:
+  cmp #$20
+  bne _skip_comment
+  #next_char
+  jmp _skip_whitespace
+_skip_comment:
+  cmp #'#'
+  bne _have_char
+_flush_line:
+  #next_char
+  cmp #13
+  bne _flush_line
+  jmp _next_line
+
 _have_char:             ; jump here if your last char may be the first of another arg
   tax                   ; char to x
 ; increment num args
@@ -61,31 +75,28 @@ _have_char:             ; jump here if your last char may be the first of anothe
   txa                   ; restore char to a
   cmp #13               ; carriage return == eol?
   bne _no_eol           ; if not end of line, continue to parsing
-; Check if open brackets left
+; Check if empty expr or open brackets left
 ; If not, emit toplevel eval
   pla                   ; pull n args
   sta arg1
+  beq _continue_expr    ; continue empty expression
   tsx                   ; check stack size to detect open brackets
   txa
-  cmp stackbottom
-  bne _have_brackets_open
+  cmp stackbottom       ; continue expr if still brackets open
+  bne _continue_expr
   jmp emit_eval         ; this one RTSes for us
-_have_brackets_open:
+_continue_expr:
   lda arg1              ; restore last arg count on stack
   sec
   sbc #1                ; we incremented it without parsing an argument; so retract that
   pha
+  cmp #$FF              ; no expression parsed?
+  beq _next_line
   jmp _next_line        ; and read another line (assuming we're here because end of line!)
 
 _no_eol:
 
 _switch_on_first_char:
-
-_skip_whitespace:
-  cmp #$20
-  bne _try_sep
-  #next_char
-  jmp _skip_whitespace
 
 _try_sep:
   cmp #';'

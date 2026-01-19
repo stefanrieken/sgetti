@@ -73,10 +73,24 @@ _loop:
 
 bind:
   ; effectively == define closure val; return closure
-  ; Have value in arg1
   jsr add_slot
+  ldy #$FF             ; var $FFFF = "(closure)"
+  jsr define_special
+  txs
+  ; return slot pointer
+  lda varptr
+  sta arg1
+  lda varptr+1
+  sta arg1+1
+  jmp thread_loop
+
+; Add special var like closure = $FFFF
+; or parent = $FEFE
+; Pass value in arg1, special name in Y
+define_special:
+  jsr add_slot
+  tya                   ; Arg special name to A
   ldy #0
-  lda #$FF             ; equiv: "(closure)"
   sta (varptr),y
   iny
   sta (varptr),y
@@ -86,13 +100,7 @@ bind:
   lda arg1+1
   iny
   sta (varptr),y
-  txs
-  ; return slot pointer
-  lda varptr
-  sta arg1
-  lda varptr+1
-  sta arg1+1
-  jmp thread_loop
+  rts
 
 rt_error:
   txs
@@ -111,12 +119,15 @@ funcall:
   lda (arg1),y
   cmp #$FF
   bne rt_error
+_load_func:
   iny
   lda (arg1),y          ; load func from closure var's value
   sta result
   iny
   lda (arg1),y
   sta result+1
+  ldy #$FE              ; Add parent pointer as $FEFE (probably easier to check for than $FFFE)
+  jsr define_special
   pla
   tay
   ; Pass args to 'funcall fn' to the function, to be picked up by 'args'
@@ -149,7 +160,8 @@ _args_done:
   lda result+1
   sta arg1+1
   ; The eval_block primitive should handle the rest for us
-  jmp eval_block
+  lda #4                ; Tell eval_block that this is a function
+  jmp eval_block        ; Then it will clear the parent pointer for us
 
 add_slot:
   lda varptr
@@ -236,7 +248,7 @@ _check_at_end:
   sec                   ; Lookup failed; set carry as marker
   rts
 _compare:
-  ldy #0
+  ldy #0                ; TODO skip parent pointer
   lda (result),y
   cmp result2
   bne _next

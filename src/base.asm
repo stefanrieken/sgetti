@@ -130,16 +130,10 @@ setb: ; 'setb 0x1234 42'
   txs ; restore stack
   jmp thread_loop
 getb:
-  ldy #1
--
+  ldy #0
   lda (arg1),y
-  sta arg2
-  dey
-  bne -
-  lda arg2
   sta arg1
-  lda arg2+1
-  sta arg1+1
+  sty arg1+1
   txs ; restore stack
   jmp thread_loop
 print: ; print a unique_string or similarly formatted string
@@ -167,9 +161,15 @@ _else:
   dey
   dey
 _then:
-  jsr stack_y_to_arg1 ; and fall through to 'eval'
+  jsr stack_y_to_arg1
+  lda #0              ; and fall through to 'eval_block'
+
+; Call with
+; A = 0: is a block (0 extra items to clean)
+; A = 4: is a function (clean parent pointer when done)
 eval_block:           ; eval block
   txs                 ; early restore stack as we already have our only arg1
+  pha                 ; then push A=block/function marker
   lda ip+1            ; save current ip
   pha
   lda ip
@@ -183,6 +183,14 @@ eval_block:           ; eval block
   sta ip
   pla
   sta ip+1
+  pla                 ; A=4: was run as function; clear parent pointer
+  beq _done           ; A=0: nothing to clear
+  clc                 ; varptr += 4
+  adc varptr
+  sta varptr
+  bcc _done
+  inc varptr+1
+_done:
   jmp thread_loop     ; continue as usual
 
 

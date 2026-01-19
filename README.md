@@ -17,24 +17,25 @@ Here's a "Hello, World" in Pasta:
         greet "world"
 
 ## Threaded code
-Pasta's original interpreter runs on a minimalistic 4-instruction byte code,
-partially designed to feel a bit like a simple 8-bit machine.
+Pasta's original interpreter runs on a minimalistic 4-instruction code engine,
+partially designed to evoke the spirit of a simple 8-bit machine.
 
 As it turns out, a real 8-bit machine has a much worse code density, and could do
-with a little byte code of its own, albeit with different design constraints:
+with a little byte code of its own, but with different design constraints:
 while the 6502 cannot afford to decode individual instruction and argument bits,
 it can easily support a wider range of instructions by way of a jump table.
 
-This technique is known as token threaded code.
+This technique of interpreting bytecode by way of a jump table is known as
+token threaded code.
 
 ### Instruction density
-Now having a full byte at our disposal, we can afford more instructions,
-including typed `PUSH` variants (all pointing to one implementation) that allow
-us to decompile the bytecode back to source code, BASIC style.
+With a full byte at our disposal, we can afford more instructions, including
+typed `PUSH` variants (all pointing to one implementation) that help us to
+decompile the bytecode back to source code, BASIC style.
 
 Even then there's less than a nybblesworth of core instructions (and yes, I
-just invented that word, and trademarked it), so the higher bytecodes are put
-to use for directly referencing expression level primitives.
+just invented that word, and trademarked it), so the higher bytecodes are used
+to directly reference expression level primitives, using the same lookup table.
 
 ### Example
 In pseudo-mnemonics, an expression like `print "hello " x` would now translate
@@ -87,25 +88,45 @@ It may not be intuitive to represent either function by `arrow up`, but keeping
 a near match with ASCII helps towards code comprehension and interoperability.
 
 ### Kernalemu / tmce4
-Kernalemu is [a cool project](https://github.com/mist64/kernalemu) that can run
-all kinds of CBM software on the command line by emulating a 6502 plus KERNAL
-routines.
+[Kernalemu](https://github.com/mist64/kernalemu) is a cool project that can run
+all kinds of CBM software on the command line by emulating a 6502 together with
+the KERNAL routines.
 
-It only does ASCII adaptation on its (screen) output, leaving the input
-reverse-case and requiring you to SHOUT your commands. I have patched it
+It only does some ASCII adaptation on its (screen) output, leaving the input
+reverse-case and requiring you to SHOUT your commands. (I have patched it
 locally to flip the case back, and to extend the lower-to-upper reversal to
-the `{}` area, so that both alternatives are accepted for input.
+the `{}` area, so that for these symbols both alternatives are accepted as
+input.)
 
 Equally cool is the
 [Terminal Mode Commodore Emulator](https://github.com/kobolt/tmce64),
-which approximates PETSCII art using ASCII.
+which approximates PETSCII art using ASCII. This emulator accepts regular input
+as lowercase, and displays it in the C64 with the appropriate case shift; but
+it simply refuses the symbols near '{}'.
+
+(On main.c:314 it produces a double carriage return on autorun. Remove one of
+these to successfully parse Sgetti's first line of input.)
+
+### Twist & shout
+So whenever we cannot change the input constraints of these emulators, we can
+just change the input text itself.  The tool `twist` either just changes the
+wider `{}` ASCII area to the wider `[]` area, or, if called with `-shout`, it
+also reverses case. It only takes stdin and writes to stdout, so that typical
+usage may look like:
+
+        ./twist < test.txt > converted.txt
+        cat test.txt | ./twist -SHOUT | ../kernalemu/build/kernalemu sgetti64.bin
+
+Note that `kernalemu` doesn't echo its piped input. As for `tmce64`, it will not
+sync well with the piped in data, and there's the first-input bug; so here it
+is easier to just copy / paste your (converted) program.
 
 ## Current state
 Sgetti compiles and runs on both the neo6502 emulator and the c64, as well as
 on Kernalemu and tmce64. (See the `run` Makefile target for details).
 
-It still lacks a conventient way to pass in a proper test program. However, it
-can already run all kinds of Pasta expressions:
+We are slowly getting to the point of running a test suite. Meanwhile, here are
+a few different Pasta expressions to try:
 
         print "hello"; print "world"
         print "Hello, " (return "world") "!"
@@ -113,15 +134,17 @@ can already run all kinds of Pasta expressions:
         * (+ 1 2) (+ 3 4) 2
         / 0x2a 2 3
         % 44 3
-        if (= (* 6 7) 0x2a) { print "yes"; return 42 }
+
+Functions now fully work with lexical scoping, and conditionals and blocks with
+regular block scoping:
 
         define "f" (bind {
           args "x";
-          define "y" 7;
-          * x y
+          if (= x 0x2a) { print "correct!" };
+          loop {
+            print "hello";
+            set "x" (- x 1)
+          }
         })
         f 6
-
-The aim is to use lexical scoping, for which `bind` already produces a closure
-variable; however, we still have to add and skip parent pointers.
 
