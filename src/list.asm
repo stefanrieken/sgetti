@@ -47,7 +47,7 @@ _expr_prim:
 +
   sec
   sbc #MAX_CORE+1
-  jsr reverse_lookup
+  jsr string_n
   jsr print_sep
   jsr print_arg1
 list_ws_loop:
@@ -181,61 +181,4 @@ print_done:
   bne print_char_in_a
 +
   jmp list_loop
-
-
-; This can obviously move to another file
-errs:
-.text 14, "syntax error", 0
-.text 20, "undefined variable", 0
-.text 15, "runtime error", 0
-.text 20, "arg count mismatch", 0, 0
-
-ERRNO_SYNTAX = 0
-ERRNO_VARREF = 1
-ERRNO_RT = 2
-ERRNO_ARGS = 3
-
-print_errno:
-;.byte 3
-  sta tmp
-  lda #<errs
-  sta arg1
-  lda #>errs
-  sta arg1+1
-  jsr reverse_lookup_tmp_in_arg1
-  jsr print_arg1
-  lda #13
-  jsr WriteCharacter
-  rts
-
-; only looks up fixed strings
-; pass 1 byte string num in a
-reverse_lookup:
-  sta tmp
-  lda #<fixed_strings
-  sta arg1
-  lda #>fixed_strings
-  sta arg1+1
-reverse_lookup_tmp_in_arg1:
-  ldy #0
-  txa
-  pha
-  ldx #0
-_loop:
-  txa
-  cmp tmp
-  beq _done
-  lda (arg1),y          ; jump to next string using total size
-  clc
-  adc arg1
-  sta arg1
-  bcc +
-  inc arg1+1
-+
-  inx
-  bne _loop
-_done:
-  pla
-  tax
-  rts
 

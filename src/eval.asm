@@ -22,11 +22,11 @@
 jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
   .text <return, <getb, <setb, <print, <if, <eval_block, <loop, <define, <get, <set, <bind, <funcall, <args, <listp
-  .text <add, <sub, <band, <bor, <xor_or_not, <xor_or_not, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot
+  .text <add, <sub, <band, <bor, <xor_or_not, <xor_or_not, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot, <dollar
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
   .text >return, >getb, >setb, >print, >if, >eval_block, >loop, >define, >get, >set, >bind, >funcall, >args, >listp
-  .text >add, >sub, >band, >bor, >xor_or_not, >xor_or_not, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot
+  .text >add, >sub, >band, >bor, >xor_or_not, >xor_or_not, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot, >dollar
 
 fixed_strings:
   .text 8, "return", 0
@@ -60,9 +60,10 @@ fixed_strings:
   .text 4, ">=", 0
   .text 4, "&&", 0
   .text 4, "||", 0
-  .text 3, "!", 0, 0
+  .text 3, "!", 0
+ .text 3, "$", 0, 0
 
-NUM_FIXED_STRINGS=32
+NUM_FIXED_STRINGS=33
 
 PRIM_PUSH0=0
 PRIM_PUSH1=1
@@ -144,15 +145,3 @@ _incr_ip:
 _done:
   rts
 
-print_arg1:
-  ldy #0
-  lda (arg1),y  ; load size of string in A
-  beq _str_done     ; string size zero = terminator?
-_loop:
-  iny               ; next character
-  lda (arg1),y  ; load character value
-  beq _str_done     ; zero terminated
-  jsr WriteCharacter
-  bne _loop         ; = unconditional jump
-_str_done:
-  rts

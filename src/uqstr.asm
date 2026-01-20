@@ -82,3 +82,35 @@ _done:
     sta arg1+1
     rts                 ; return to user
 
+
+; only looks up fixed strings
+; pass 1 byte string num in a
+string_n:
+  sta tmp
+  lda #<fixed_strings
+  sta arg1
+  lda #>fixed_strings
+  sta arg1+1
+string_n_in_tmp_dict_in_arg1:
+  ldy #0
+  txa
+  pha
+  ldx #0
+_loop:
+  txa
+  cmp tmp
+  beq _done
+  lda (arg1),y          ; jump to next string using total size
+  clc
+  adc arg1
+  sta arg1
+  bcc +
+  inc arg1+1
++
+  inx
+  bne _loop
+_done:
+  pla
+  tax
+  rts
+

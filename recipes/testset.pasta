@@ -112,8 +112,8 @@ test "nesting" 42 ( if true { if true { return 42 }})
 # - Only string literals match on '='; constructed strings are not 'uniqued'
 #test "$ for string" "42" ($ 42)
 
-print "Tests run: " ($ tests_run) "\n"
-print "Succeeded: " ($ succeeded) "\n"
+print "Tests run: " ($ tests_run ) #"\n"
+print "Succeeded: " ($ succeeded ) #"\n"
 
 # NOTE: original Pasta is picky on not evaluating sequence ending with ';'
 # This SHOULD not matter
