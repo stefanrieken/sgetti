@@ -50,7 +50,7 @@ do_ref:
   pha
   jmp thread_loop
 _error:
-  jsr syntax_error      ; TODO retract emitted values in this line (save prgtop just like stackbottom)
+  jsr rt_error      ; TODO retract emitted values in this line (save prgtop just like stackbottom)
   jmp thread_loop
 push_result:
   lda arg1+1            ; result of expression level prims is in arg1

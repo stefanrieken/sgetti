@@ -144,13 +144,6 @@ _incr_ip:
 _done:
   rts
 
-; utility callable versions of print & print error
-syntax_error:
-  ldy #<stx_err
-  lda #>stx_err
-print_ya:
-  sty arg1
-  sta arg1+1
 print_arg1:
   ldy #0
   lda (arg1),y  ; load size of string in A
@@ -163,7 +156,3 @@ _loop:
   bne _loop         ; = unconditional jump
 _str_done:
   rts
-
-stx_err:
-  .text 6, "[?]", 13, 0
-

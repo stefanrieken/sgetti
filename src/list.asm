@@ -183,7 +183,31 @@ print_done:
   jmp list_loop
 
 
-_print_next:
+; This can obviously move to another file
+errs:
+.text 14, "syntax error", 0
+.text 20, "undefined variable", 0
+.text 15, "runtime error", 0
+.text 20, "arg count mismatch", 0, 0
+
+ERRNO_SYNTAX = 0
+ERRNO_VARREF = 1
+ERRNO_RT = 2
+ERRNO_ARGS = 3
+
+print_errno:
+;.byte 3
+  sta tmp
+  lda #<errs
+  sta arg1
+  lda #>errs
+  sta arg1+1
+  jsr reverse_lookup_tmp_in_arg1
+  jsr print_arg1
+  lda #13
+  jsr WriteCharacter
+  rts
+
 ; only looks up fixed strings
 ; pass 1 byte string num in a
 reverse_lookup:
@@ -192,6 +216,7 @@ reverse_lookup:
   sta arg1
   lda #>fixed_strings
   sta arg1+1
+reverse_lookup_tmp_in_arg1:
   ldy #0
   txa
   pha

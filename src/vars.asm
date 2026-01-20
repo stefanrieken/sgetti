@@ -31,16 +31,16 @@ set:
   jsr stack_y_to_arg2
   jsr lookup_from_arg1   ; pointer in result
   bcs _done              ; lookup failed
-  jsr copy_var
-;_copy:
-;  ldy #2
-;  lda arg2
-;  sta (result),y
-;  sta arg1              ; also store as return result
-;  iny
-;  lda arg2+1
-;  sta (result),y
-;  sta arg1+1
+;  jsr copy_var
+_copy:
+  ldy #2
+  lda arg2
+  sta (result),y
+  sta arg1              ; also store as return result
+  iny
+  lda arg2+1
+  sta (result),y
+  sta arg1+1
 _done:
   txs
   jmp thread_loop
@@ -104,7 +104,17 @@ define_special:
 
 rt_error:
   txs
-  jmp syntax_error      ; TODO in practice this prints a double result
+  lda #ERRNO_RT
+  jmp print_errno
+
+args_error:
+  txs
+lda argc
+clc
+adc #$30
+jsr WriteCharacter
+  lda #ERRNO_ARGS
+  jmp print_errno
 
 funcall:
   tya
@@ -173,8 +183,8 @@ add_slot:
 _done:
   rts
 
-; TODO count arguments to 'args' toward number of defines in parser
 args:
+;.byte 3
   inc argc              ; correct one off
   tya
   pha
@@ -194,7 +204,7 @@ _compare:
   lsr a
   lsr a
   cmp argc              ; passed as many args as names?
-  bne rt_error
+  bne args_error
 _loop:
   dey                   ; back to name pos
   dey

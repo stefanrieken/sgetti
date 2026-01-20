@@ -24,10 +24,14 @@ run65: sgetti65.bin
 twist: src/twist.c
 	$(CC) $^ -o $@
 
+regression: sgetti64.prg twist
+	./twist < recipes/testset.pasta > test.tmp
+	cat test.tmp | ../kernalemu/build/kernalemu sgetti64.prg
+
 # Run with VICE: x64 test64.prg
 # Or run with kernalemu, which is a fun project
 run64: sgetti64.prg
 	../kernalemu/build/kernalemu sgetti64.prg -text
 
 clean:
-	rm -rf tmp.asm labels.txt memory.dump *.bin *.prg twist
+	rm -rf test.tmp tmp.asm labels.txt memory.dump *.bin *.prg twist

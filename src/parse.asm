@@ -62,17 +62,20 @@ _flush_line:
   #next_char
   cmp #13
   bne _flush_line
-  jmp _next_line
+  ;jmp _next_line
 
 _have_char:             ; jump here if your last char may be the first of another arg
+
+; increment n_args. Started at -1 to also count closing char (bracket, eol or sep)
+
   tax                   ; char to x
-; increment num args
-  pla
-  clc
+  pla                   ; pull n args
+  clc                   ; increment n args
   adc #1
   pha
-; test for end of line
   txa                   ; restore char to a
+
+; test for end of line
   cmp #13               ; carriage return == eol?
   bne _no_eol           ; if not end of line, continue to parsing
 ; Check if empty expr or open brackets left
@@ -90,18 +93,15 @@ _continue_expr:
   sec
   sbc #1                ; we incremented it without parsing an argument; so retract that
   pha
-  cmp #$FF              ; no expression parsed?
-  beq _next_line
   jmp _next_line        ; and read another line (assuming we're here because end of line!)
 
 _no_eol:
-
 _switch_on_first_char:
 
 _try_sep:
   cmp #';'
   bne _try_open_sub
-  pla       ; pull n args
+  pla                   ; pull n args
   sta arg1
   jsr emit_eval
   lda #$FF  ; start new arg count
@@ -268,7 +268,7 @@ _parse_label:
   stx tmp
   jsr parse_string_or_label
   #unread               ; final char was not a label char
-  bcs parse_error       ; carry marks no existing label found
+  bcs varref_error      ; carry marks no existing label found
   lda result+1
   bne _no_prim          ; a string index with msb>0 will not be a core string
   lda result
@@ -346,11 +346,19 @@ _label_done:
   pla                   ; final char not used
   rts
 
+varref_error:
+  #flush
+  txs
+  lda #ERRNO_VARREF
+  jsr print_errno
+  ldx stackbottom
+  jmp parse
 parse_error:
   #flush
-  jsr syntax_error      ; TODO retract emitted values in this line (save prgtop just like stackbottom)
-  ldx stackbottom
   txs
+  lda #ERRNO_SYNTAX
+  jsr print_errno
+  ldx stackbottom
   jmp parse
 
 sanity_check .macro
