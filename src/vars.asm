@@ -74,7 +74,7 @@ _loop:
 bind:
   ; effectively == define closure val; return closure
   jsr add_slot
-  ldy #$FF             ; var $FFFF = "(closure)"
+  ldy #$FE             ; var $FFFE = "(closure)"
   jsr define_special
   txs
   ; return slot pointer
@@ -84,15 +84,16 @@ bind:
   sta arg1+1
   jmp thread_loop
 
-; Add special var like closure = $FFFF
-; or parent = $FEFE
-; Pass value in arg1, special name in Y
+; Add special var $FFxx like closure = $FFFE
+; or parent = $FFFF
+; Pass lsb in arg1, special name in Y
 define_special:
   jsr add_slot
   tya                   ; Arg special name to A
   ldy #0
   sta (varptr),y
   iny
+  lda #$FF              ; Give all specials $FF msb
   sta (varptr),y
   lda arg1              ; set value
   iny
@@ -123,7 +124,7 @@ funcall:
   ; Sanity check if it is a closure by checking for name = 0xFFFF
   ldy #0
   lda (arg1),y
-  cmp #$FF
+  cmp #$FE
   bne rt_error
   iny
   lda (arg1),y
@@ -136,7 +137,7 @@ _load_func:
   iny
   lda (arg1),y
   sta result+1
-  ldy #$FE              ; Add parent pointer as $FEFE (probably easier to check for than $FFFE)
+  ldy #$FF              ; Add parent pointer as $FFFF (easier to check for than $FFFE)
   jsr define_special
   pla
   tay
@@ -184,7 +185,6 @@ _done:
   rts
 
 args:
-;.byte 3
   inc argc              ; correct one off
   tya
   pha
@@ -258,7 +258,7 @@ _check_at_end:
   sec                   ; Lookup failed; set carry as marker
   rts
 _compare:
-  ldy #0                ; TODO skip parent pointer
+  ldy #0
   lda (result),y
   cmp result2
   bne _next
@@ -266,7 +266,24 @@ _compare:
   lda (result),y
   cmp result2+1
   beq _found
+  dey
 _next:
+  lda (result),y        ; was parent pointer?
+  cmp #$FF
+  bne +
+  iny
+  cmp (result),y
+  bne +
+  iny
+  lda (result), y       ; follow parent pointer
+  pha
+  iny
+  lda (result),y
+  sta result+1
+  pla
+  sta result
+  jmp _loop
++
   lda result
   clc
   adc #4                ; 16-bit name + 16-bit value = 4 bytes

@@ -117,17 +117,22 @@ MAX_CORE=11
 ;
 
 thread_loop:
-  jsr next_byte ; consider in-lining this code here to win back 12 cycles in main loop
-  cmp #MAX_CORE+1   ; is prim > max core prim?
+  jsr next_byte         ; consider in-lining this code here to win back 12 cycles in main loop
+  cmp #MAX_CORE+1       ; is prim > max core prim?
 _push_instr:
   tay
-  lda jumptable_msb,y ; to potentially support full 256 instrs, use separate page for jumptable lsb / msb
+  lda jumptable_msb,y   ; to potentially support full 256 instrs, use separate page for jumptable lsb / msb
   pha
-  lda jumptable_lsb,y ; (may also try to keep all jumps on one page so that msb is always the same)
+  lda jumptable_lsb,y   ; (may also try to keep all jumps on one page so that msb is always the same)
   pha
 _eval_if_core:
-  bcs thread_loop ; only push expression level primitive; leave eval to 'eval n'
-  rts ; eval by JMP to address on stack PLUS ONE (so adjust core jump table accordingly)
+  bcs thread_loop ; _not_core         ; only push expression level primitive; leave eval to 'eval n'
+  rts                   ; eval by JMP to address on stack PLUS ONE (so adjust core jump table accordingly)
+_not_core:
+  tya
+  cmp #(MAX_CORE + NUM_FIXED_STRINGS) ; is prim out of bounds?
+  bcc thread_loop
+  jmp rt_error          ; TODO: cleanup ALL non-global vars on emergency exit
 
   ; All primitives should return by jumping to thread_loop.
   ; If not, this value triggers the monitor in the neo6502 emulator:
