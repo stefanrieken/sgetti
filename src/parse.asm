@@ -38,13 +38,20 @@ repl:
 ; Parse code
 ;
 
-; Non-ZP register
+; Non-ZP registers
 stackbottom:
 .byte 0
+old_prgtop:
+.byte 0, 0
 
 parse:
   tsx                   ; Save stack bottom to know if we still have (sub)expression data going
   stx stackbottom
+
+  lda prgtop
+  sta old_prgtop
+  lda prgtop+1
+  sta old_prgtop+1
 
   lda #$FF              ; Count args per (sub)expr
   sta argc              ; Start with -1 so we can start with an increment
@@ -245,12 +252,12 @@ _num_done:
 
 _nan:
 
-_parse_string:
+_try_string:
   cmp #$22              ; '"'
   bne _parse_label      ; if not a string, then a label
   sta tmp               ; store quote to signal string
-  #next_char
-  jsr parse_string_or_label
+;  #next_char
+  jsr parse_string
   #sanity_check
   ldx #PRIM_STRB
   jsr emit_optimized_cmd
@@ -258,8 +265,9 @@ _parse_string:
 
 _parse_label:
   ldx #$20              ; space delimits label
-  stx tmp
-  jsr parse_string_or_label
+  stx tmp               ; and unique_string checks for this value in tmp
+
+  jsr parse_label
   #unread               ; final char was not a label char
   bcs varref_error      ; carry marks no existing string was found; should never be so for label refs
   lda result+1
@@ -299,25 +307,81 @@ _ref_only
   jsr emit_optimized_cmd
   jmp _next_char
 
+varref_error:
+  #flush
+  lda #ERRNO_VARREF
+  bne do_error
+parse_error:
+  #flush
+  lda #ERRNO_SYNTAX
+do_error:
+  jsr print_errno
+  lda old_prgtop
+  sta prgtop
+  lda old_prgtop+1
+  sta prgtop+1
+  ldx stackbottom
+  txs
+  lda #ERRNO_VARREF
+  jmp parse
+
+
 ;
 ; Parse string or label
 ;
 ; Pass end char in tmp
-; Return values as defined by unique_string; final char in a
+; Return values as defined by unique_string; final char in A
 
-parse_string_or_label:
+parse_string:
+  ldx #$0
+;  sta stringbuf,x
+_next_char:
+  #next_char
+  cmp tmp
+  beq string_or_label_done
+  cmp #'\'              ; Allow at least the most common escape characters
+  bne _escape_done
+  #next_char
+  cmp #'n'              ; Giving in and letting \n represent system's newline
+  lda #13               ; maybe substitute this for system dependent constant
+  bne _escape_done
+  lda #$10
+_escape_done:
+  inx
+  sta stringbuf,x
+  jmp _next_char
+
+;label_terminators:
+;.byte ' ', 13, '{', '}', '(', ')', '"', ';', 0
+;string_terminators:
+;.byte '"', 0
+
+parse_label:
   ldx #$1
   sta stringbuf,x
 _next_char:
   #next_char
   cmp tmp
-  beq _label_done
+  beq string_or_label_done
   cmp #13               ; check against newline
-  beq _label_done
+  beq string_or_label_done
+  cmp #'{'
+  beq string_or_label_done
+  cmp #'}'
+  beq string_or_label_done
+  cmp #'('
+  beq string_or_label_done
+  cmp #')'
+  beq string_or_label_done
+  cmp #'"'
+  beq string_or_label_done
+  cmp #';'
+  beq string_or_label_done
   inx
   sta stringbuf,x
   jmp _next_char
-_label_done:
+
+string_or_label_done:
   pha                   ; to return final char
   inx
   lda #$0
@@ -335,20 +399,6 @@ _label_done:
   pla                   ; final char not used
   rts
 
-varref_error:
-  #flush
-  txs
-  lda #ERRNO_VARREF
-  jsr print_errno
-  ldx stackbottom
-  jmp parse
-parse_error:
-  #flush
-  txs
-  lda #ERRNO_SYNTAX
-  jsr print_errno
-  ldx stackbottom
-  jmp parse
 
 ; Throw an error if we parsed something other than a label at the start of an
 ; expression. This is easier than to restrict parser expectations beforehand,

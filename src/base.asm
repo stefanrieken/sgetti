@@ -46,8 +46,8 @@ print: ; print a unique_string or similarly formatted string
   jsr stack_y_to_arg1_no_check  ; don't let this function return for us
   jmp print
 _done
-  lda #13               ; so that we can write a newline (may remove this feature later)
-  jsr WriteCharacter
+;  lda #13               ; so that we can write a newline (may remove this feature later)
+;  jsr WriteCharacter
   txs ; restore stack
   jmp thread_loop
 

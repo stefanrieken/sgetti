@@ -135,3 +135,7 @@ flush .macro
 check_brk .macro
   jsr $FFE1
 .endmacro
+
+get_column .macro
+  lda $D3
+.endmacro

@@ -12,6 +12,9 @@
 ; Affects Y
 ; Affects X (this can easily be changed to a tmp address)
 
+unique_string_from_buf:
+  lda #<stringbuf
+  ldy #>stringbuf
 unique_string:
     sta arg1            ; (if) arg1 is passed in A/Y, store its value in zero page so we can use it
     sty arg1+1
