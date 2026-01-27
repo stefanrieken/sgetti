@@ -73,7 +73,7 @@ _put:
    adc #$30             ; ascii 0
    cmp #$3A             ; >= 10 (e.g. hex)
    bcc +
-   adc #$31             ; difference from '0' to (friendly lowercase) 'a'
+   adc #$05             ; difference from $3a to 'a' (minus carry)
 +
    sta stringbuf,y
    iny

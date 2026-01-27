@@ -24,16 +24,27 @@ getb:
   txs ; restore stack
   jmp thread_loop
 dollar:                 ; convert a number to string; always in a _fleeting_ buffer
-  txa
-  pha
-  jsr convert_num_base_10  ; TODO support second argument: ($ num 16)
+  dec argc              ; more args?
+  bmi +
+  lda $00FF,y
+  bne _have_base
++
+  lda #10
+_have_base:
+  sta divisor
+  lda #0
+  sta divisor+1
+  txs
+;  txa
+;  pha
+  jsr convert_num
   lda #<stringbuf
   sta arg1
   lda #>stringbuf
   sta arg1+1
-  pla
-  tax
-  txs
+;  pla
+;  tax
+;  txs
   jmp thread_loop
 print: ; print a unique_string or similarly formatted string
   tya

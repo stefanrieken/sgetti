@@ -151,6 +151,8 @@ print_label:
   jsr print_arg1
   jmp list_ws_loop
 print_push_result:
+  lda #' '
+  sta sep
   lda #')'
   dec argc
   jmp print_char_in_a
