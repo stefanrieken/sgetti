@@ -42,7 +42,8 @@ varptr       = $0A ; Points to 'top' of varstack
 argc         = $0C ; Parse: counts number of defines; eval: counts number of args
 tmp          = $0D ; General purpose temp (used by divide, parse, unique_string)
 sep          = $0E ; Separator character (used in list)
-stackbottom  = $0F ; Holds 'bottom' of stack during parse
+varc         = $0F ; Count number of defines during parse
+;stackbottom  = $0F ; Holds 'bottom' of stack during parse
 
 ; Argument / result registers
 arg1         = $10 ; First argument (let's count these from 1)
@@ -101,5 +102,12 @@ unread .macro
 .endmacro
 
 flush .macro
+.endmacro
+
+; C64 run/stop check returns Z if pressed
+; Don't know if neo6502 has a similar function,
+; so for now return a clear Z; uses A.
+check_brk .macro
+  lda #1
 .endmacro
 

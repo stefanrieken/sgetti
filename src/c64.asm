@@ -8,7 +8,6 @@ ReadCharacter=$FFCF
 ;ReadCharacter=$0073 ; somehow the zp version won't work for us here
 WriteCharacter = $FFD2
 
-
 ; Ever since the early PETs, BASIC starts at page+1
 ; simply due to RUN / GOTO probably pre-incrementing.
 ; This also causes the odd "38911 BASIC bytes free".
@@ -71,7 +70,8 @@ varptr       = $2A ; Points to 'top' of varstack
 argc         = $2C ; Parse: counts number of defines; eval: counts number of args
 tmp          = $2D ; General purpose temp (used by divide, parse, unique_string)
 sep          = $2E ; Separator character (used in list); also used in c64 as temp char
-stackbottom  = $2F ; Holds 'bottom' of stack during parse
+varc         = $2F ; Count number of defines during parse
+;stackbottom  = $2F ; Holds 'bottom' of stack during parse
 
 ; Argument / result registers
 arg1         = $30 ; First argument (let's count these from 1)
@@ -130,4 +130,8 @@ flush .macro
   jsr read_char
   cmp #13
   bne -
+.endmacro
+
+check_brk .macro
+  jsr $FFE1
 .endmacro

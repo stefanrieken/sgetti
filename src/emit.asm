@@ -64,18 +64,19 @@ _done:
   tay
   rts
 
-; n args must be in arg1
 emit_eval:
-  lda argc              ; load number of defines
+  lda varc              ; load number of defines
   and #$80              ; was msb set to mark we're parsing 'args'?
   beq +
-  lda arg1              ; load number of args
+  lda argc              ; load number of args
   clc
-  adc argc              ; add n args to n defines
+  adc varc              ; add n args to n defines
   sbc #0                ; minus one (due to carry = 0)
   and #$7F              ; remove mark
-  sta argc              ; put back for PRIM_DONE to find later
+  sta varc              ; put back for PRIM_DONE to find later
 +
+  lda argc
+  sta arg1
   ldx #PRIM_EVAL
   jsr emit_byte_cmd
   rts

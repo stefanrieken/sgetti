@@ -105,6 +105,8 @@ loop:
   lda arg1
   pha
 _eval:
+  #check_brk
+  beq _done
   tsx                   ; re-load block from stack
   lda $0101,x           ; while retaining it on stack
   sta ip
