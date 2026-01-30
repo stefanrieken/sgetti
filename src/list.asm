@@ -1,22 +1,28 @@
-listp:
+;
+; List primitives
+;
+
+hist:                    ; list full command history
+  nop                    ; 'hist' and 'list' must be different
+listp:                   ; only list effective program ('list' is a 64tass keyword)
   lda #<progmem
-  sta primptr            ; store our "instruction pointer" here, for a place
+  sta lineptr            ; store our "instruction pointer" here, for a place
   lda #>progmem
-  sta primptr+1
+  sta lineptr+1
   lda #0
-  sta sep             ; store separator in sep
+  sta sep                ; store separator in sep
   sta argc               ; store expression depth in argc
 list_loop:
   jsr next_list_byte
   tay
 ; check for end
-  lda primptr+1
+  lda lineptr+1
   cmp prgtop+1           ; cs = idx >= prgtop ; so cc = idx < prgtop
   beq +
   bcs list_done              ; page too far -> done
   bcc _not_done
 +
-  lda primptr            ; we only get here if page is same
+  lda lineptr            ; we only get here if page is same
   cmp prgtop             ; cs = idx >= prgtop
   bcs list_done
 _not_done:
@@ -64,12 +70,12 @@ list_done:
 
 next_list_byte:
   ldy #0
-  lda (primptr),y
+  lda (lineptr),y
 ; increment to next
   clc
-  inc primptr
+  inc lineptr
   bne +
-  inc primptr+1
+  inc lineptr+1
 +
   rts
 
@@ -82,10 +88,10 @@ print_sep:
 
 printtable_msb:
   .text >print_push0-1, >print_push1-1, >print_pushb-1, >print_pushw-1, >print_strb-1, >print_strw-1, >print_refb-1, >print_refw-1
-  .text >print_push_result-1, >print_skipw-1, >print_eval-1, >print_done-1
+  .text >print_push_result-1, >print_skipw-1, >print_keep-1, >print_scratch-1, >print_eval-1, >print_done-1
 printtable_lsb:
   .text <print_push0-1, <print_push1-1, <print_pushb-1, <print_pushw-1, <print_strb-1, <print_strw-1, <print_refb-1, <print_refw-1
-  .text <print_push_result-1, <print_skipw-1, <print_eval-1, <print_done-1
+  .text <print_push_result-1, <print_skipw-1, <print_keep-1, <print_scratch-1, <print_eval-1, <print_done-1
 
 print_push0:
   lda #'0'
@@ -165,12 +171,30 @@ print_skipw:
   sta argc              ; recount depth for brackets (works out ok for normal block usage)
   lda #'{'
   bne print_char_in_a
+print_keep:
+  jsr next_list_byte
+  jsr next_list_byte
+  lda #13               ; Separate toplevel statements by a newline
+  sta sep
+  jmp list_loop
+print_scratch:
+  lda primptr           ; Called from 'hist'?
+  cmp #<hist            ; Really only need to check lsb
+  beq print_keep        ; Then just print everything
+  jsr next_list_byte    ; Otherwise skip over scratch item
+  pha
+  jsr next_list_byte
+  sta lineptr+1         ; TODO compute relative address for fully relocatable code! (search for this comment
+  pla
+  sta lineptr
+  lda #13               ; Separate toplevel statements by a newline
+  sta sep
+  jmp list_loop
 print_eval:
   jsr next_list_byte
   lda #0
   sta argc
   lda #';'
-  ;bne print_char_in_a
   sta sep
   jmp list_loop
 print_done:

@@ -1,3 +1,8 @@
+; Use result2 to store old prgtop at zero page
+; Should only live during & right after parse
+old_prgtop = result2
+
+
 init:
   lda #0
   sta stringmem
@@ -16,6 +21,26 @@ init:
 
 repl:
   jsr parse             ; Read
+
+; Finish the 'keep' or 'scratch' statement
+  ldy #1
+  lda prgtop
+  sta (old_prgtop),y
+  iny
+  lda prgtop+1          ; TODO compute relative address for fully relocatable code! (search for this comment)
+  sta (old_prgtop),y
+  iny
+  lda (old_prgtop),y
+  cmp #PRIM_DEFINE      ; Was the line a toplevel 'define' statement? (TODO unify with 'set')
+  bne +
+  lda #PRIM_KEEP        ; Then mark it as 'keep' for source code listings (TODO scratch any previous defines)
+  bne _set
++
+  lda #PRIM_SCRATCH     ; Otherwise mark as 'scratch' command line history (alternative: forget line by resetting to old_prgtop)
+_set:
+  ldy #0
+  sta (old_prgtop),y
+
 ; Add 'done 0' after prgtop to end program by rts;
 ; Do not increase prgtop so that later code can append by overwriting 'done'
   ldy #0
@@ -24,7 +49,7 @@ repl:
   iny
   lda #0                ; Don't clear any defines on toplevel
   sta (prgtop),y
-;.byte 3
+
   jsr thread_loop       ; Eval
   jsr print_repl_result ; Print
 ; Due to 'done', ip has moved to prgtop+1; correct this
@@ -41,8 +66,6 @@ repl:
 ; Non-ZP registers
 stackbottom:
 .byte 0
-old_prgtop:
-.byte 0, 0
 
 parse:
   tsx                   ; Save stack bottom to know if we still have (sub)expression data going
@@ -52,6 +75,14 @@ parse:
   sta old_prgtop
   lda prgtop+1
   sta old_prgtop+1
+
+  clc                   ; Reserve space for either a 'keep' or 'scratch' top level statement
+  lda #3
+  adc prgtop
+  sta prgtop
+  bcc +
+  inc prgtop+1
++
 
   lda #$FF              ; Count args per (sub)expr
   sta argc              ; Start with -1 so we can start with an increment
@@ -165,8 +196,7 @@ _try_close_blk:
   sta arg2
   pla
   sta arg2+1
-_insert_target:
-  jsr emit_eval
+  jsr emit_eval         ; first finish off final expr
   lda varc              ; number of defines
   sta arg1
   ldx #PRIM_DONE
@@ -175,10 +205,11 @@ _insert_target:
   sta argc
   pla                   ; restore parent number of defines AFTER we have emitted our own
   sta varc
+_insert_target:
   tya
   pha
   ldy #1                ; pointer is to start of instr, so +1 for word arg
-  lda prgtop
+  lda prgtop            ; TODO compute relative address for fully relocatable code! (search for this comment
   sta (arg2),y
   iny
   lda prgtop+1

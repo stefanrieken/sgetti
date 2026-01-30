@@ -32,7 +32,7 @@ vars_end  = $8000  ; Both top and start of var stack (grows down)
 ; Utility zero page registers
 ;
 
-lineptr      = $02 ; The line being parsed
+lineptr      = $02 ; The line being parsed; also used as 'list ip'
 prgtop       = $04 ; The top of program memory
 ip           = $06 ; The instruction pointer
 primptr      = $08 ; Address of current expression level primitive, useful for looping

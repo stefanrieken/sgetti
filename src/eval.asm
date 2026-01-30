@@ -20,12 +20,14 @@
 ; Because we jump into core prims by means of rts, these need address minus one
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
-  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1, <push_result-1, <skipw-1, <eval-1, <done-1
-  .text <return, <getb, <setb, <print, <if, <eval_block, <loop, <define, <get, <set, <bind, <funcall, <args, <listp
+  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1
+  .text <push_result-1, <skipw-1, <skimw-1, <skimw-1, <eval-1, <done-1
+  .text <return, <getb, <setb, <print, <if, <eval_block, <loop, <define, <get, <set, <bind, <funcall, <args, <hist, <listp
   .text <add, <sub, <band, <bor, <xor_or_not, <xor_or_not, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot, <dollar
 jumptable_msb:
-  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1, >push_result-1, >skipw-1, >eval-1, >done-1
-  .text >return, >getb, >setb, >print, >if, >eval_block, >loop, >define, >get, >set, >bind, >funcall, >args, >listp
+  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1
+  .text >push_result-1, >skipw-1, >skimw-1, >skimw-1, >eval-1, >done-1
+  .text >return, >getb, >setb, >print, >if, >eval_block, >loop, >define, >get, >set, >bind, >funcall, >args, >hist, >listp
   .text >add, >sub, >band, >bor, >xor_or_not, >xor_or_not, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot, >dollar
 
 fixed_strings:
@@ -42,6 +44,7 @@ fixed_strings:
   .text 6, "bind", 0
   .text 9, "funcall", 0
   .text 6, "args", 0
+  .text 6, "hist", 0
   .text 6, "list", 0
   .text 3, "+", 0
   .text 3, "-", 0
@@ -75,42 +78,45 @@ PRIM_REFB=6
 PRIM_REFW=7
 PRIM_PUSH_RESULT=8
 PRIM_SKIPW=9
-PRIM_EVAL=10
-PRIM_DONE=11
-PRIM_RETURN=12
-PRIM_GETB=13
-PRIM_SETB=14
-PRIM_PRINT=15
-PRIM_IF=16
-PRIM_EVAL_BLOCK=17
-PRIM_LOOP=18
-PRIM_DEFINE=19
-PRIM_GET=20
-PRIM_SET=21
-PRIM_BIND=22
-PRIM_FUNCALL=23
-PRIM_ARGS=24
-PRIM_LIST=25
-PRIM_ADD=26
-PRIM_SUB=27
-PRIM_AND=28
-PRIM_OR=29
-PRIM_XOR=30
-PRIM_NOT=31
-PRIM_TIMES=32
-PRIM_DIV=33
-PRIM_REM=34
-PRIM_EQ=35
-PRIM_NE=36
-PRIM_LT=37
-PRIM_GT=38
-PRIM_LTE=39
-PRIM_GTE=40
-PRIM_LAND=41
-PRIM_LOR=42
-PRIM_LNOT=43
+PRIM_KEEP=10
+PRIM_SCRATCH=11
+PRIM_EVAL=12
+PRIM_DONE=13
+PRIM_RETURN=14
+PRIM_GETB=15
+PRIM_SETB=16
+PRIM_PRINT=17
+PRIM_IF=18
+PRIM_EVAL_BLOCK=19
+PRIM_LOOP=20
+PRIM_DEFINE=21
+PRIM_GET=22
+PRIM_SET=23
+PRIM_BIND=24
+PRIM_FUNCALL=25
+PRIM_ARGS=26
+PRIM_HIST=27
+PRIM_LIST=28
+PRIM_ADD=29
+PRIM_SUB=30
+PRIM_AND=31
+PRIM_OR=32
+PRIM_XOR=33
+PRIM_NOT=34
+PRIM_TIMES=35
+PRIM_DIV=36
+PRIM_REM=37
+PRIM_EQ=38
+PRIM_NE=39
+PRIM_LT=40
+PRIM_GT=41
+PRIM_LTE=42
+PRIM_GTE=43
+PRIM_LAND=44
+PRIM_LOR=45
+PRIM_LNOT=46
 
-MAX_CORE=11
+MAX_CORE=PRIM_DONE
 
 ;
 ; Main engine
@@ -143,7 +149,7 @@ _not_core:
 next_byte:
   ldy #0
   lda (ip),y
-_incr_ip:
+incr_ip:
   inc ip
   bne _done ; if circled back to zero, increment msb as well
   inc ip+1

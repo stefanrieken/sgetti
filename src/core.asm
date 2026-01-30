@@ -33,12 +33,11 @@ ref_byte:
   tax
   lda #$00
 ref_word:
-  ; TODO we can't afford to mess up arg1 here!
   jsr next_byte
   tax
   jsr next_byte
 do_ref:
-  sta result2+1          ; lookup uses result2 so as not to mess up arg1 / arg2
+  sta result2+1         ; lookup uses result2 so as not to mess up arg1 / arg2
   stx result2
   jsr lookup
   bcs _error
@@ -50,7 +49,7 @@ do_ref:
   pha
   jmp thread_loop
 _error:
-  jsr rt_error      ; TODO retract emitted values in this line (save prgtop just like stackbottom)
+  jsr rt_error          ; TODO retract emitted values in this line (elevate stackbottom mechanism to REPL level?)
   jmp thread_loop
 push_result:
   lda arg1+1            ; result of expression level prims is in arg1
@@ -68,10 +67,13 @@ skipw:
   lda ip
   pha
   stx ip                ; and set ip to target
-  sty ip+1              ; for now skip is absolute instead of an offset
+  sty ip+1              ; TODO compute relative address for fully relocatable code! (search for this comment)
+  jmp thread_loop
+skimw:                  ; simply skim over top level statements 'keep' and 'scratch'
+  jsr incr_ip           ; as these are only used for generating code listings
+  jsr incr_ip
   jmp thread_loop
 eval:
-_calc_fp:
   jsr next_byte         ; load num of 2-byte stack items to eval
   sta argc
   asl argc              ; arg count * 2 bytes
