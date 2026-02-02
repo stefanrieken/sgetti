@@ -35,17 +35,6 @@ mapscii .encode
 .tdef '}', $5D  ; onto ']'
 .tdef '~', $5D  ; onto arrow up; TODO interferes with '^'
 
-start:
-
-; Set screen to lowercase to get a semblance of readability on c64.
-; On Kernalemu you have to SCREAM anyway.
-lda #23
-sta 53272
-lda #0
-sta sep
-
-jmp init
-
 ;
 ; Memory allocation on the C64
 ;
@@ -95,6 +84,21 @@ neo6502_breakpoint .macro
 .endmacro
 
 ;
+; Entry point
+;
+
+start:
+; Set screen to lowercase to get a semblance of readability on c64.
+; On Kernalemu you have to SCREAM anyway.
+lda #23
+sta 53272
+lda #0
+sta sep
+
+jmp init
+
+
+;
 ; Read / Write functions
 ;
 
@@ -115,6 +119,59 @@ read_char:
   bne +
   jsr WriteCharacter
 +
+  rts
+
+FILENO=1                ; TODO no idea what file n
+open_file:              ; Name in arg1, r/w (0/1) in A
+  sta tmp
+  txa
+  pha
+  tya
+  pha
+  lda #FILENO           ; Logical file number
+  ldx #8                ; Disk device
+  ldy #1                ; Command none -- well: kernalemu wants '1' for write here
+  jsr $FFBA             ; SETLFS
+  ldy #0
+  lda (arg1),y          ; Save string length
+  sec
+  sbc #2                ; Actual string length, not total admin. length
+  pha                   ; Set aside
+  lda arg1              ; Set file name as string pointer
+  clc
+  adc #1                ; Skip size
+  tax
+  lda arg1+1
+  adc #0                ; Overflow into msb
+  tay
+  pla                   ; Restore string length
+  jsr $FFBD             ; SETNAM
+  jsr $FFC0             ; OPEN
+  ldx #FILENO
+  lda tmp               ; Read or Write (0/1)?
+  beq +
+  jsr $FFC9             ; CHKOUT
+  jmp _done
++
+  jsr $FFC6             ; CHKIN
+_done
+  pla
+  tay
+  pla
+  tax
+  rts
+close_file:
+  txa
+  pha
+  tya
+  pha
+  lda #FILENO
+  jsr $FFC3             ; CLOSE
+  jsr $FFCC             ; CLRCHN - TODO better ways to restore to standard input / output channels?
+  pla
+  tay
+  pla
+  tax
   rts
 
 next_char .macro

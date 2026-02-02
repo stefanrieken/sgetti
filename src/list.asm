@@ -2,9 +2,20 @@
 ; List primitives
 ;
 
+save:
+  lda #1                 ; Set to write
+  jsr open_file
+  jsr do_list
+  jsr close_file
+  txs
+  jmp thread_loop
 hist:                    ; list full command history
   nop                    ; 'hist' and 'list' must be different
 listp:                   ; only list effective program ('list' is a 64tass keyword)
+  jsr do_list
+  txs
+  jmp thread_loop
+do_list:
   lda #<progmem
   sta lineptr            ; store our "instruction pointer" here, for a place
   lda #>progmem
@@ -63,10 +74,9 @@ list_ws_loop:
 list_done:
   lda #13
   jsr WriteCharacter
-  txs
   lda #$0               ; same field is used in parse, so clean up
   sta sep
-  jmp thread_loop
+  rts
 
 next_list_byte:
   ldy #0

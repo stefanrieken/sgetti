@@ -2,7 +2,6 @@
 ; Run on emulator by writing neo6502-firmware/bin/neo a.out@800 cold
 
 *=$800              ; neo6502 cold start address
-jmp init
 
 ; Neo6502 Kernel API convenience macros
 ; An alternative way to define these is:
@@ -67,6 +66,12 @@ neo6502_breakpoint .macro
 .endmacro
 
 ;
+; Entry point
+;
+
+jmp init
+
+;
 ; Read / Write functions
 ;
 
@@ -90,6 +95,11 @@ read_new_line:
   lda #13               ; Use CR for EOL to match c64's CHRIN input
   sta (lineptr),y
   ldy #0                ; Restore char index
+  rts
+
+open_file:              ; TODO for neo6502
+  rts
+close_file:
   rts
 
 next_char .macro

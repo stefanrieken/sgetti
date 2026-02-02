@@ -109,13 +109,13 @@ these to successfully parse Sgetti's first line of input.)
 
 ### Twist & shout
 So whenever we cannot change the input constraints of these emulators, we can
-just change the input text itself.  The tool `twist` either just changes the
-wider `{}` ASCII area to the wider `[]` area, or, if called with `-shout`, it
-also reverses case. It only takes stdin and writes to stdout, so that typical
-usage may look like:
+just change the input text itself.  The tool `twist` moves the wider `{}` ASCII
+area to the wider `[]` area. If called with `-n` it also switches newlines and
+carriage returns; and if called with `-SHOUT`, it also reverses case. As it only
+reads from stdin and writes to stdout, typical usage may look like:
 
-        ./twist < test.txt > converted.txt
-        cat test.txt | ./twist -SHOUT | ../kernalemu/build/kernalemu sgetti64.bin
+        ./twist -n -SHOUT < OUTPUT > converted.txt
+        cat test.txt | ./twist -SHOUT | ../kernalemu/build/kernalemu sgetti64.prg
 
 Note that `kernalemu` doesn't echo its piped input. As for `tmce64`, it will not
 sync well with the piped in data, and there's the first-input bug; so here it
