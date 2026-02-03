@@ -21,6 +21,34 @@ init:
 
 repl:
   jsr parse             ; Read
+  jsr finalize_parse
+  jsr thread_loop       ; Eval
+  jsr print_repl_result ; Print
+; Due to 'done', ip has moved to prgtop+1; correct this
+  lda prgtop
+  sta ip
+  lda prgtop+1
+  sta ip+1
+  jmp repl              ; Loop
+
+
+;
+; This should actually be done at all exit points of 'parse'.
+; For now solve it like this.
+;
+
+finalize_parse:
+
+; Add 'done 0' after prgtop to end program by rts;
+; Do not increase prgtop so that later code can append by overwriting 'done'
+; We may have parsed an empty statement, or an EVAL 0. In either case it seems it survives evaluation.
+; Ideally though, we'd detect this and cleanup the whole toplevel 'keep' / 'scratch' statement.
+  ldy #0
+  lda #PRIM_DONE
+  sta (prgtop),y
+  iny
+  lda #0                ; Don't clear any defines on toplevel
+  sta (prgtop),y
 
 ; Finish the 'keep' or 'scratch' statement
   ldy #1
@@ -40,30 +68,14 @@ repl:
 _set:
   ldy #0
   sta (old_prgtop),y
+  rts
 
-; Add 'done 0' after prgtop to end program by rts;
-; Do not increase prgtop so that later code can append by overwriting 'done'
-  ldy #0
-  lda #PRIM_DONE
-  sta (prgtop),y
-  iny
-  lda #0                ; Don't clear any defines on toplevel
-  sta (prgtop),y
-
-  jsr thread_loop       ; Eval
-  jsr print_repl_result ; Print
-; Due to 'done', ip has moved to prgtop+1; correct this
-  lda prgtop
-  sta ip
-  lda prgtop+1
-  sta ip+1
-  jmp repl              ; Loop
 
 ;
 ; Parse code
 ;
 
-; Non-ZP registers
+; Non-ZP registers - TODO neither reentrant nor ROM-safe
 stackbottom:
 .byte 0
 
@@ -93,6 +105,11 @@ _next_line:
   jsr read_new_line
 _next_char:
   #next_char
+  cmp #0                ; This is a kernalemu only quick-fix:
+  bne _skip_whitespace  ; The c64 should return '\r' during EOF (I'd still rather READST returned EOF before the fact)
+  ldx stackbottom       ; Kernalemu instead returns '0', which we would otherwise just accept as perpetual data.
+  txs                   ; While I suspect '\r' to result in an 'eval 0' statement, this rts leaves the statement empty.
+  rts                   ; Both these cases want fixing; however for now we rely on them simply surviving 'eval'.
 _skip_whitespace:
   cmp #$20
   bne _skip_comment

@@ -1,7 +1,27 @@
 ;
 ; List primitives
 ;
-
+load:
+  txa
+  pha
+  lda #0
+  jsr open_file
+  bcs _done
+;  cmp #0
+;  bne _done
+-
+  jsr parse
+  jsr finalize_parse
+  jsr stat_file
+  cmp #0
+  beq -
+;  jsr thread_loop       ; Can't recursively call thread_loop -- but the appended code will be run anyway :D
+_done:
+  jsr close_file
+  pla
+  tax
+  txs
+  jmp thread_loop
 save:
   lda #1                 ; Set to write
   jsr open_file

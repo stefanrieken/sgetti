@@ -1,5 +1,5 @@
 SOURCES=src/parse.asm src/emit.asm src/eval.asm src/core.asm src/base.asm src/int.asm src/print.asm src/vars.asm src/uqstr.asm src/list.asm
-all: sgetti65.bin sgetti64.prg twist
+all: sgetti65.bin sgetti64.prg twist sgetti.d64
 
 sgetti65.bin: src/neo.asm $(SOURCES)
 	cat $^ > tmp.asm # overcome a multi file symbol retainment bug
@@ -34,7 +34,7 @@ regression: sgetti64.prg twist
 run64: sgetti64.prg
 	../kernalemu/build/kernalemu sgetti64.prg -text
 
-disk: sgetti64.prg
+sgetti.d64: sgetti64.prg
 	cc1541 -n "sgetti" -f "sgetti64" -w sgetti64.prg sgetti.d64
 
 clean:

@@ -98,8 +98,8 @@ read_new_line:
   rts
 
 open_file:              ; TODO for neo6502
-  rts
 close_file:
+stat_file:
   rts
 
 next_char .macro

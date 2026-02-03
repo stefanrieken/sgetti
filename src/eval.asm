@@ -22,12 +22,12 @@
 jumptable_lsb:
   .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1
   .text <push_result-1, <skipw-1, <skimw-1, <skimw-1, <eval-1, <done-1
-  .text <return, <getb, <setb, <print, <if, <eval_block, <loop, <define, <get, <set, <bind, <funcall, <args, <hist, <listp, <save
+  .text <return, <getb, <setb, <print, <if, <eval_block, <loop, <define, <get, <set, <bind, <funcall, <args, <hist, <listp, <save, <load
   .text <add, <sub, <band, <bor, <xor_or_not, <xor_or_not, <times, <div, <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot, <dollar
 jumptable_msb:
   .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1
   .text >push_result-1, >skipw-1, >skimw-1, >skimw-1, >eval-1, >done-1
-  .text >return, >getb, >setb, >print, >if, >eval_block, >loop, >define, >get, >set, >bind, >funcall, >args, >hist, >listp, >save
+  .text >return, >getb, >setb, >print, >if, >eval_block, >loop, >define, >get, >set, >bind, >funcall, >args, >hist, >listp, >save, >load
   .text >add, >sub, >band, >bor, >xor_or_not, >xor_or_not, >times, >div, >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot, >dollar
 
 fixed_strings:
@@ -47,6 +47,7 @@ fixed_strings:
   .text 6, "hist", 0
   .text 6, "list", 0
   .text 6, "save", 0
+  .text 6, "load", 0
   .text 3, "+", 0
   .text 3, "-", 0
   .text 3, "&", 0
@@ -67,7 +68,7 @@ fixed_strings:
   .text 3, "!", 0
  .text 3, "$", 0, 0
 
-NUM_FIXED_STRINGS=34
+NUM_FIXED_STRINGS=35
 
 PRIM_PUSH0=0
 PRIM_PUSH1=1
@@ -99,24 +100,25 @@ PRIM_ARGS=26
 PRIM_HIST=27
 PRIM_LIST=28
 PRIM_SAVE=29
-PRIM_ADD=30
-PRIM_SUB=31
-PRIM_AND=32
-PRIM_OR=33
-PRIM_XOR=34
-PRIM_NOT=35
-PRIM_TIMES=36
-PRIM_DIV=37
-PRIM_REM=38
-PRIM_EQ=39
-PRIM_NE=40
-PRIM_LT=41
-PRIM_GT=42
-PRIM_LTE=43
-PRIM_GTE=44
-PRIM_LAND=45
-PRIM_LOR=46
-PRIM_LNOT=47
+PRIM_LOAD=30
+PRIM_ADD=31
+PRIM_SUB=32
+PRIM_AND=33
+PRIM_OR=34
+PRIM_XOR=35
+PRIM_NOT=36
+PRIM_TIMES=37
+PRIM_DIV=38
+PRIM_REM=39
+PRIM_EQ=40
+PRIM_NE=41
+PRIM_LT=42
+PRIM_GT=43
+PRIM_LTE=44
+PRIM_GTE=45
+PRIM_LAND=46
+PRIM_LOR=47
+PRIM_LNOT=48
 
 MAX_CORE=PRIM_DONE
 

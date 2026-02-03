@@ -130,7 +130,7 @@ open_file:              ; Name in arg1, r/w (0/1) in A
   pha
   lda #FILENO           ; Logical file number
   ldx #8                ; Disk device
-  ldy #1                ; Command none -- well: kernalemu wants '1' for write here
+  ldy tmp               ; Command: seems 1541 wants wants '0'/'1' for read/write here (and so does kernalemu)
   jsr $FFBA             ; SETLFS
   ldy #0
   lda (arg1),y          ; Save string length
@@ -147,7 +147,29 @@ open_file:              ; Name in arg1, r/w (0/1) in A
   pla                   ; Restore string length
   jsr $FFBD             ; SETNAM
   jsr $FFC0             ; OPEN
-  ldx #FILENO
+  bcs _done             ; Well... not if File not found on 1541
+
+  lda #15               ; For that, we have to open the error channel
+  ldx #8
+  ldy #15
+  jsr $FFBA             ; SETLFS
+  lda #0
+  jsr $FFBD             ; SETNAM (no name, as 1541 reads name as a command)
+  jsr $FFC0             ; OPEN
+  ldx #15
+  jsr $FFC6             ; CHKIN
+  jsr $FFCF            ; CHRIN
+;  jsr $FFE4             ; GETIN
+  cmp #'0'              ; Error result is basically CSV text; if error reads "0x", we good (actually if error is <20)
+  beq +                 ; Also sets carry clear (our status indicator)
+  jsr WriteCharacter    ; Debug the error char. Note we do not give any better error feedback at this point
+  sec                   ; Set carry as error indicator
+  bcs _done
++
+;  lda #15
+;  jsr $FFC3             ; Don't actually close control channel on success; you'll close the file channel with it
+
+  ldx #FILENO           ; Back to our actual file
   lda tmp               ; Read or Write (0/1)?
   beq +
   jsr $FFC9             ; CHKOUT
@@ -155,10 +177,12 @@ open_file:              ; Name in arg1, r/w (0/1) in A
 +
   jsr $FFC6             ; CHKIN
 _done
+  sta tmp               ; save any error result
   pla
   tay
   pla
   tax
+  lda tmp               ; restore any error result before returning
   rts
 close_file:
   txa
@@ -173,6 +197,8 @@ close_file:
   pla
   tax
   rts
+
+stat_file=$FFB7         ; READST
 
 next_char .macro
   jsr read_char
