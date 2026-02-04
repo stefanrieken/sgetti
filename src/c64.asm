@@ -4,8 +4,10 @@
 
 ; Adapted from neo.asm for c64
 
-ReadCharacter=$FFCF
-;ReadCharacter=$0073 ; somehow the zp version won't work for us here
+ReadCharacter=$FFCF     ; CHRIN aka BASIN
+;ReadCharacter=$FFE4     ; GETIN operates on keyboard buffer
+;ReadCharacter=$0073     ; CHRGET (zp copy of CHARGET); can't get this to work
+;ReadCharacter=$E3A2     ; CHARGET
 WriteCharacter = $FFD2
 
 ; Ever since the early PETs, BASIC starts at page+1
@@ -103,8 +105,8 @@ jmp init
 ;
 
 read_new_line:
-   lda #0
-   sta sep
+  lda #0
+  sta sep
   rts
 
 read_char:
@@ -115,9 +117,11 @@ read_char:
   rts
 +
   jsr ReadCharacter
-  cmp #13
+  cmp #13               ; tmce64 seems to forget to echo newline
   bne +
-  jsr WriteCharacter
+  ldy $D3               ; Not on column 0?
+  beq +
+  jsr WriteCharacter    ; Then we echo newline
 +
   rts
 
@@ -219,6 +223,3 @@ check_brk .macro
   jsr $FFE1
 .endmacro
 
-get_column .macro
-  lda $D3
-.endmacro

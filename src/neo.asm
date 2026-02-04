@@ -120,15 +120,3 @@ flush .macro
 check_brk .macro
   lda #1
 .endmacro
-
-get_column .macro
-  ; group 2, function 13: returns x coord in Parameter 0
-  lda #13
-  sta $FF01             ; Set Function
-  lda #2
-  sta $FF00             ; Set Group to trigger the call
--
-  lda $FF00             ; Func is done if group is cleared
-  bne -
-  lda $FF04             ; Parameter 0
-.endmacro
