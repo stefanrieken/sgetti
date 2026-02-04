@@ -105,8 +105,12 @@ jmp init
 ;
 
 read_new_line:
+  lda sep
+  cmp #0
+  bne +
   lda #0
   sta sep
++
   rts
 
 read_char:
@@ -117,7 +121,7 @@ read_char:
   rts
 +
   jsr ReadCharacter
-  cmp #13               ; tmce64 seems to forget to echo newline
+  cmp #13               ; Echoing newline may only be required for tmce64
   bne +
   ldy $D3               ; Not on column 0?
   beq +
@@ -152,42 +156,31 @@ open_file:              ; Name in arg1, r/w (0/1) in A
   jsr $FFBD             ; SETNAM
   jsr $FFC0             ; OPEN
   bcs _done             ; Well... not if File not found on 1541
-
-  lda #15               ; For that, we have to open the error channel
-  ldx #8
-  ldy #15
-  jsr $FFBA             ; SETLFS
-  lda #0
-  jsr $FFBD             ; SETNAM (no name, as 1541 reads name as a command)
-  jsr $FFC0             ; OPEN
-  ldx #15
-  jsr $FFC6             ; CHKIN
-  jsr $FFCF            ; CHRIN
-;  jsr $FFE4             ; GETIN
-  cmp #'0'              ; Error result is basically CSV text; if error reads "0x", we good (actually if error is <20)
-  beq +                 ; Also sets carry clear (our status indicator)
-  jsr WriteCharacter    ; Debug the error char. Note we do not give any better error feedback at this point
-  sec                   ; Set carry as error indicator
-  bcs _done
-+
-;  lda #15
-;  jsr $FFC3             ; Don't actually close control channel on success; you'll close the file channel with it
-
-  ldx #FILENO           ; Back to our actual file
+  ldx #FILENO           ; File num now in X
   lda tmp               ; Read or Write (0/1)?
   beq +
   jsr $FFC9             ; CHKOUT
   jmp _done
 +
   jsr $FFC6             ; CHKIN
+  jsr stat_file
+  cmp #0                ; error?
+  bne +
+  clc                   ; if no error, set carry=0 as result
+  beq _done
++
+  lda #0                ; if error, discard char
+  sta sep
+  lda #'Q'
+  jsr WriteCharacter
+  sec
 _done
-  sta tmp               ; save any error result
   pla
   tay
   pla
   tax
-  lda tmp               ; restore any error result before returning
   rts
+
 close_file:
   txa
   pha
@@ -202,7 +195,16 @@ close_file:
   tax
   rts
 
-stat_file=$FFB7         ; READST
+;stat_file=$FFB7         ; READST
+
+stat_file:
+  jsr ReadCharacter     ; Have to read to detect timeout=file not found on 1541
+  cmp #$FF              ; Or to detect EOF, for which tmce64 tends to return this (from overflow read in d64 file?)
+  beq +                 ; We don't need to keep that
+  sta sep
++
+  jsr $FFB7             ; READST
+  rts
 
 next_char .macro
   jsr read_char

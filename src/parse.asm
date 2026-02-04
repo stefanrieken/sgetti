@@ -370,7 +370,6 @@ do_error:
   sta prgtop+1
   ldx stackbottom
   txs
-  lda #ERRNO_VARREF
   jmp parse
 
 

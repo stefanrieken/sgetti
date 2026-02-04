@@ -217,8 +217,6 @@ print_scratch:
   sta lineptr+1         ; TODO compute relative address for fully relocatable code! (search for this comment
   pla
   sta lineptr
-  lda #13               ; Separate toplevel statements by a newline
-  sta sep
   jmp list_loop
 print_eval:
   jsr next_list_byte
