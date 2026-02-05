@@ -34,6 +34,9 @@ regression: sgetti64.prg twist
 run64: sgetti64.prg
 	../kernalemu/build/kernalemu sgetti64.prg -text
 
+tmce:
+	../tmce64/tmce64 -8 sgetti.d64 sgetti64.prg
+
 sgetti.d64: sgetti64.prg
 	cc1541 -n "sgetti" -f "sgetti64" -w sgetti64.prg sgetti.d64
 

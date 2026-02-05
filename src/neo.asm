@@ -97,6 +97,22 @@ read_new_line:
   ldy #0                ; Restore char index
   rts
 
+cr:
+  ; group 2, function 13: returns x coord in Parameter 0
+  lda #13
+  sta $FF01             ; Set Function
+  lda #2
+  sta $FF00             ; Set Group to trigger the call
+-
+  lda $FF00             ; Func is done if group is cleared
+  bne -
+  lda $FF04             ; Parameter 0
+  beq +
+  lda #13
+  jsr WriteCharacter
++
+  rts
+
 open_file:              ; TODO for neo6502
 close_file:
 stat_file:

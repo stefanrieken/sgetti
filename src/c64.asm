@@ -123,8 +123,10 @@ read_char:
   jsr ReadCharacter
   cmp #13               ; Echoing newline may only be required for tmce64
   bne +
+cr:
   ldy $D3               ; Not on column 0?
   beq +
+  lda #13
   jsr WriteCharacter    ; Then we echo newline
 +
   rts

@@ -1,6 +1,9 @@
 ;
-; List primitives
+; List primitives and interactive commands
 ;
+
+reset:
+  jmp init
 load:
   txa
   pha

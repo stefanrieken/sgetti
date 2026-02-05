@@ -86,11 +86,7 @@ _put:
    rts
 
 print_repl_result:
-;  #get_column
-;  beq +
-;  lda #13
-;  jsr WriteCharacter
-;+
+  jsr cr
   lda #$5B ; [
   jsr WriteCharacter
   jsr printnum_base_10
