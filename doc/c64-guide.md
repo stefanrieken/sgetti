@@ -5,7 +5,7 @@ Notable C64 specific features are:
 - Blocks use `[]` instead of the missing characters `{}`
 - Loops are sensitive to `run/stop` (`esc` in many emulators)
 - `load` and `save` are implemented (still TBD on Neo6502 version)
-- C64 specific hardware access
+- There is C64 specific hardware to address
 
 ## Building
 Sgetti is built using the `64tass` assembler. The disk image (optional, but
@@ -51,9 +51,9 @@ construct a finite loop as follows:
 
 Note that while the `define` statement is evaluated on the spot, the multi-line
 `loop` statement is not evaluated until fully entered. This is because the REPL
-(read-eval-print-loop; the command line interpreter) found the opening bracket
-before any newline was read. As any expressions within the brackets may now be
-multi-line, they should consistently be separated by a `;`.
+(read-eval-print-loop; the command line interpreter) waits on any open brackets
+to close before evaluating the line. As any expressions within the brackets can
+now span multiple lines, the must be consistently separated by a `;`.
 
 Pasta variable slot references are always written as strings, so that their
 unquoted label form always implies value substitution. Pasta expressions are

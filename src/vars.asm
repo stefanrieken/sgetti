@@ -73,7 +73,7 @@ _loop:
 
 bind:
   ; effectively == define closure val; return closure
-  jsr add_slot
+;  jsr add_slot
   ldy #$FE             ; var $FFFE = "(closure)"
   jsr define_special
   txs
@@ -275,7 +275,7 @@ _next:
   cmp (result),y
   bne +
   iny
-  lda (result), y       ; follow parent pointer
+  lda (result),y        ; follow parent pointer -- TODO somehow this got broken
   pha
   iny
   lda (result),y

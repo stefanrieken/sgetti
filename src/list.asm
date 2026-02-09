@@ -1,5 +1,5 @@
 ;
-; List primitives and interactive commands
+; List primitives and related commands
 ;
 
 reset:
@@ -44,7 +44,6 @@ do_list:
   lda #>progmem
   sta lineptr+1
   lda #0
-  sta sep                ; store separator in sep
   sta argc               ; store expression depth in argc
 list_loop:
   jsr next_list_byte
@@ -69,36 +68,51 @@ _not_done:
   pha
   rts ; JMP
 _expr_prim:
-  lda argc
+  lda argc              ; Are we a subexpression?
+  and #$80
   beq +
-  jsr print_sep
+  lda #' '
+  jsr WriteCharacter
   lda #'('
-  sta sep              ; because we are going to print a separator
+  jsr WriteCharacter
+  jmp _cont
 +
-  inc argc
+  jsr print_ws
+_cont:
   tya
   cmp #PRIM_FUNCALL
   bne +
-  jsr print_sep
-  lda #$0
-  sta sep
   jmp list_loop
-  bne +
 +
+  lda argc              ; set subexpr detection bit
+  ora #$80
+  sta argc
+  tya
   sec
   sbc #MAX_CORE+1
   jsr string_n
-  jsr print_sep
   jsr print_arg1
-list_ws_loop:
-  lda #$20
-  sta sep
   jmp list_loop
 list_done:
   lda #13
   jsr WriteCharacter
-  lda #$0               ; same field is used in parse, so clean up
-  sta sep
+  rts
+
+print_ws:
+  tya
+  pha
+  lda argc              ; check depth bits
+  and #$7F
+  tay
+  beq +
+  lda #' '
+-
+  jsr WriteCharacter
+  dey
+  bne -
++
+  pla
+  tay
   rts
 
 next_list_byte:
@@ -109,13 +123,6 @@ next_list_byte:
   inc lineptr
   bne +
   inc lineptr+1
-+
-  rts
-
-print_sep:
-  lda sep
-  beq +
-  jsr WriteCharacter
 +
   rts
 
@@ -131,12 +138,10 @@ print_push0:
   beq +
 print_push1:
   lda #'1'
-+
-  jsr print_sep
-  jsr WriteCharacter
-  jmp list_loop
+  bne +
 print_pushb:
   jsr next_list_byte
++
   sta arg1
   lda #0
   beq +
@@ -148,31 +153,29 @@ print_pushw:
   sta arg1+1
   txa
   pha
-  jsr print_sep
+  lda #' '
+  jsr WriteCharacter
   jsr printnum_base_10
   pla
   tax
   jmp list_loop
 print_strb:
-  jsr print_sep
-  lda #'"'
-  jsr WriteCharacter
+  jsr next_list_byte
+  sta arg1
   lda #0
+  beq +
+print_strw:
+  jsr next_list_byte
   sta arg1
   jsr next_list_byte
-  jmp print_string
-print_strw:
-  jsr print_sep
++
+  sta arg1+1
+  lda #' '
+  jsr WriteCharacter
   lda #'"'
   jsr WriteCharacter
-  jsr next_list_byte
-  sta arg1
-  jsr next_list_byte
-print_string:
-  sta arg1+1
   jsr print_arg1
   lda #'"'
-print_char_in_a:
   jsr WriteCharacter
   jmp list_loop
 print_refb:
@@ -186,29 +189,43 @@ print_refw:
   jsr next_list_byte
 print_label:
   sta arg1+1
-  jsr print_sep
-  jsr print_arg1
-  jmp list_ws_loop
-print_push_result:
+  lda argc              ; if here through 'funcall', subexpr bit was not yet set
+  and #$80
+  beq +                 ; in that case, don't print leading space
   lda #' '
-  sta sep
+  jsr WriteCharacter
++
+  jsr print_arg1
+  lda argc              ; set subexpr detection bit
+  ora #$80
+  sta argc
+  jmp list_loop
+print_push_result:
+  lda argc              ; set subexpr detection bit
+  ora #$80
+  sta argc
   lda #')'
-  dec argc
   jmp print_char_in_a
 print_skipw:
   jsr next_list_byte
   jsr next_list_byte
-  jsr print_sep
-  lda #0
-  sta sep            ; no space
-  sta argc              ; recount depth for brackets (works out ok for normal block usage)
+  lda #' '
+  jsr WriteCharacter
+  lda argc              ; unset subexpr detection bit
+  and #$7F
+  sta argc
+  inc argc              ; but increment depth
+  clc
   lda #'{'
+  jsr WriteCharacter
+  lda #13
   bne print_char_in_a
 print_keep:
   jsr next_list_byte
   jsr next_list_byte
   lda #13               ; Separate toplevel statements by a newline
-  sta sep
+print_char_in_a:
+  jsr WriteCharacter    ; This (also) prints one extra newline at the start. Not necessary?
   jmp list_loop
 print_scratch:
   lda primptr           ; Called from 'hist'?
@@ -223,19 +240,26 @@ print_scratch:
   jmp list_loop
 print_eval:
   jsr next_list_byte
-  lda #0
+  lda argc             ; clear subexpr detection bit
+  and #$7F
   sta argc
-  lda #';'
-  sta sep
+  ldy #0                ; peek next instruction
+  lda (lineptr),y
+  cmp #MAX_CORE+1       ; are we part of an expression sequence?
+  bcc +
+  lda #';'              ; then print separator
+  jsr WriteCharacter
+  lda #13               ; (and a newline)
+  jsr WriteCharacter
++
   jmp list_loop
 print_done:
   jsr next_list_byte
-;  cmp #0
-;  bne +
-  lda #$20
-  sta sep
+  lda #13
+  jsr WriteCharacter
+  dec argc
+  jsr print_ws
   lda #'}'
   bne print_char_in_a
-+
   jmp list_loop
 

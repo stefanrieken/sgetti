@@ -60,7 +60,7 @@ varptr       = $2A ; Points to 'top' of varstack
 ; 1 byte
 argc         = $2C ; Parse: counts number of defines; eval: counts number of args
 tmp          = $2D ; General purpose temp (used by divide, parse, unique_string)
-sep          = $2E ; Separator character (used in list); also used in c64 as temp char
+buf          = $2E ; Parse buffer (temp char)
 varc         = $2F ; Count number of defines during parse
 ;stackbottom  = $2F ; Holds 'bottom' of stack during parse
 
@@ -90,34 +90,44 @@ neo6502_breakpoint .macro
 ;
 
 start:
+
 ; Set screen to lowercase to get a semblance of readability on c64.
-; On Kernalemu you have to SCREAM anyway.
-lda #23
-sta 53272
+;lda #23
+;sta 53272
+
 lda #0
-sta sep
+sta buf
+
+lda #<startmsg
+sta arg1
+lda #>startmsg
+sta arg1+1
+jsr print_arg1
 
 jmp init
 
+startmsg:
+.text 89, 147, 13, "    **** c64 pasta machine  v2 ****"
+.text 13, 13,  " 4k ram interpreter  so many bytes free", 13, 13, "ready.", 13, 0
 
 ;
 ; Read / Write functions
 ;
 
 read_new_line:
-  lda sep
+  lda buf
   cmp #0
   bne +
   lda #0
-  sta sep
+  sta buf
 +
   rts
 
 read_char:
-  lda sep
+  lda buf
   beq +
   ldy #0
-  sty sep
+  sty buf
   rts
 +
   jsr ReadCharacter
@@ -172,7 +182,7 @@ open_file:              ; Name in arg1, r/w (0/1) in A
   beq _done
 +
   lda #0                ; if error, discard char
-  sta sep
+  sta buf
   lda #'Q'
   jsr WriteCharacter
   sec
@@ -203,7 +213,7 @@ stat_file:
   jsr ReadCharacter     ; Have to read to detect timeout=file not found on 1541
   cmp #$FF              ; Or to detect EOF, for which tmce64 tends to return this (from overflow read in d64 file?)
   beq +                 ; We don't need to keep that
-  sta sep
+  sta buf
 +
   jsr $FFB7             ; READST
   rts
@@ -213,7 +223,7 @@ next_char .macro
 .endmacro
 
 unread .macro
-  sta sep
+  sta buf
 .endmacro
 
 flush .macro
