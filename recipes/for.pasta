@@ -1,0 +1,8 @@
+define "for" (bind {
+  args "start" "end" "step" "fn";
+  loop { if (!= start end) {
+  fn; # I think comments are killing this
+  set "start" (+ start 1)
+  }}
+})
+

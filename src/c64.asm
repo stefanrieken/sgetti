@@ -42,7 +42,7 @@ mapscii .encode
 ;
 
 linebuf   = $0200  ; Say where ReadLine puts its results (max 255 bytes / screen width)
-stringbuf = $0300  ; Max 256 bytes (including size byte)
+stringbuf = $0200  ; Overwriting the line buffer as we parse it - seems to work
 stringmem = $3000  ; Where unique strings are placed
 progmem   = $4000  ; Compiled program memory
 vars_end  = $8000  ; Both top and start of var stack (grows down)

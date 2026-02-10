@@ -40,7 +40,7 @@ varptr       = $0A ; Points to 'top' of varstack
 ; 1 byte
 argc         = $0C ; Parse: counts number of defines; eval: counts number of args
 tmp          = $0D ; General purpose temp (used by divide, parse, unique_string)
-sep          = $0E ; Separator character (used in list)
+buf          = $0E ; Not used on neo6502
 varc         = $0F ; Count number of defines during parse
 ;stackbottom  = $0F ; Holds 'bottom' of stack during parse
 

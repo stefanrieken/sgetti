@@ -37,8 +37,11 @@ run64: sgetti64.prg
 tmce:
 	../tmce64/tmce64 -8 sgetti.d64 sgetti64.prg
 
-sgetti.d64: sgetti64.prg
-	cc1541 -n "sgetti" -f "sgetti64" -w sgetti64.prg sgetti.d64
+sgetti.d64: sgetti64.prg twist recipes/*.pasta
+	./twist -n -SHOUT < recipes/for.pasta > for.tmp
+	./twist -n -SHOUT < recipes/testset.pasta > testset.tmp
+	./twist -n -SHOUT < recipes/scoping.pasta > scoping.tmp
+	cc1541 -n "sgetti" -f "sgetti64" -w sgetti64.prg  -f "for" -w for.tmp -f "testset" -w testset.tmp -f "scoping" -w scoping.tmp sgetti.d64
 
 clean:
-	rm -rf test.tmp tmp.asm labels.txt memory.dump *.bin *.prg twist
+	rm -rf *.tmp tmp.asm labels.txt memory.dump *.bin *.prg twist
