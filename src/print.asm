@@ -10,7 +10,7 @@ _loop:
   iny               ; next character
   lda (arg1),y  ; load character value
   beq _str_done     ; zero terminated
-  jsr WriteCharacter
+  jsr write_char
   bne _loop         ; = unconditional jump
 _str_done:
   rts
@@ -88,12 +88,12 @@ _put:
 print_repl_result:
   jsr cr
   lda #$5B ; [
-  jsr WriteCharacter
+  jsr write_char
   jsr printnum_base_10
   lda #$5D ; ]
-  jsr WriteCharacter
+  jsr write_char
   lda #13
-  jsr WriteCharacter
+  jsr write_char
   rts
 
 
@@ -118,6 +118,6 @@ print_errno:
   jsr string_n_in_tmp_dict_in_arg1
   jsr print_arg1
   lda #13
-  jsr WriteCharacter
+  jsr write_char
   rts
 

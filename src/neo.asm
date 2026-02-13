@@ -40,7 +40,7 @@ varptr       = $0A ; Points to 'top' of varstack
 ; 1 byte
 argc         = $0C ; Parse: counts number of defines; eval: counts number of args
 tmp          = $0D ; General purpose temp (used by divide, parse, unique_string)
-buf          = $0E ; Not used on neo6502
+buf          = $0E ; Only used on neo6502 to flag file i/o vs interactive
 varc         = $0F ; Count number of defines during parse
 ;stackbottom  = $0F ; Holds 'bottom' of stack during parse
 
@@ -68,14 +68,33 @@ neo6502_breakpoint .macro
 ;
 ; Entry point
 ;
+start:
+  lda #0
+  sta buf
 
-jmp init
+  lda #<startmsg
+  sta arg1
+  lda #>startmsg
+  sta arg1+1
+  jsr print_arg1
+
+  jmp init
+
+startmsg:
+  .text 89, 12, 13, "        **** NEO6502 PASTA MACHINE v 0.1 ****"
+  .text 13, 13,  "        4k RAM interpreter so many bytes free", 13, 13, "READY.", 13, 0
 
 ;
 ; Read / Write functions
 ;
 
 read_new_line:
+  lda buf               ; If input is file, we don't read per line
+;  bne _reset_y          ; but we do have y hovering between values 0 and 1
+  beq +
+  ldy #1
+  rts
++
   ; Apparently we define where the input comes using x, y.
   ldx #<linebuf
   ldy #>linebuf
@@ -94,18 +113,14 @@ read_new_line:
   iny
   lda #13               ; Use CR for EOL to match c64's CHRIN input
   sta (lineptr),y
+_reset_y:
   ldy #0                ; Restore char index
   rts
 
 cr:
   ; group 2, function 13: returns x coord in Parameter 0
-  lda #13
-  sta $FF01             ; Set Function
-  lda #2
-  sta $FF00             ; Set Group to trigger the call
--
-  lda $FF00             ; Func is done if group is cleared
-  bne -
+  jsr KSendMessage
+  .byte 2,13
   lda $FF04             ; Parameter 0
   beq +
   lda #13
@@ -113,14 +128,81 @@ cr:
 +
   rts
 
-open_file:              ; TODO for neo6502
+CHANNEL=1
+open_file:
+  sta Parameters+3      ; r/w (0/1) passed in a
+  ldy #0
+  lda (arg1),y          ; Adjust string length prefix to Neo style
+  sec
+  sbc #2
+  sta (arg1),y
+  lda #CHANNEL          ; set file channel
+  sta Parameters+0
+  lda arg1
+  sta Parameters+1      ; set file name
+  lda arg1+1
+  sta Parameters+2
+  jsr KSendMessage
+  .byte 3,4             ; open file
+  ldy #0
+  lda (arg1),y          ; Fix mangled string length
+  clc
+  adc #2
+  sta (arg1),y
+  lda #1
+  sta buf               ; mark file is open
+  rts
 close_file:
+  lda #CHANNEL
+  sta Parameters+0
+  jsr KSendMessage
+  .byte 3,5             ; close file
+  lda #0
+  sta buf               ; mark file is closed
+  rts
 stat_file:
+  lda #CHANNEL
+  sta Parameters+0
+  jsr KSendMessage
+  .byte 3,22            ; check eof
+  lda Parameters+0      ; zero if not eof
   rts
 
-next_char .macro
+read_char:
+  lda buf               ; are we reading from file?
+  beq _have_char
+  tya
+  beq _have_char        ; if y = 0, unread was called
+  lda #CHANNEL
+  sta Parameters+0
+  lda #<linebuf         ; always read into start of buffer
+  clc
+  adc #1                ; read at offset buffer+1
+  sta Parameters+1
+  lda #>linebuf
+  sta Parameters+2
+  lda #1                ; Read 1 char
+  sta Parameters+3
+  lda #0
+  sta Parameters+4
+  jsr KSendMessage
+  .byte 3,8
+  ldy #0                ; reset y, so that char will be at y++=1
+_have_char:
   iny
-  lda (lineptr),y
+  lda linebuf,y
+  cmp #10
+  bne +
+  lda Parameters+3      ; if nothing read, return zero. Oddly enough the parser can't handle repeated newlines as eof
+  beq +
+  lda #13               ; Force \r instead of \n (improve: use nl variable throughout code)
++
+  rts
+
+write_char = WriteCharacter
+
+next_char .macro
+  jsr read_char
 .endmacro
 
 unread .macro

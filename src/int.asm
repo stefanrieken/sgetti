@@ -195,6 +195,35 @@ nope:
   txs
   jmp thread_loop
 
+shift_left:
+  jsr stack_y_to_arg2
+-
+  sec                   ; have to repeat shift arg2 times
+  lda arg2              ; arg2 is logically a 1-byte command
+  sbc #1                ; subtract in advance to properly detect 0 times
+  sta arg2
+  bcc _done
+  asl arg1
+  rol arg1+1
+  jmp -
+_done:
+  txs
+  jmp thread_loop
+shift_right:
+  jsr stack_y_to_arg2
+-
+  sec                   ; have to repeat shift arg2 times
+  lda arg2              ; arg2 is logically a 1-byte command
+  sbc #1                ; subtract in advance to properly detect 0 times
+  sta arg2
+  bcc _done
+  lsr arg1+1
+  ror arg1
+  jmp -
+_done:
+  txs
+  jmp thread_loop
+
 
 ; Invoke 'multiply' with 1-byte multiplier in a, and result copied back into multiplicand.
 

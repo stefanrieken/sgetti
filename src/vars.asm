@@ -106,14 +106,14 @@ define_special:
 rt_error:
   txs
   lda #ERRNO_RT
-  jmp print_errno
+  jmp do_error
 
 args_error:
   txs
 lda argc
 clc
 adc #$30
-jsr WriteCharacter
+jsr write_char
   lda #ERRNO_ARGS
   jmp print_errno
 
@@ -129,7 +129,7 @@ funcall:
   iny
   lda (arg1),y
   cmp #$FF
-  bne rt_error
+  bne rt_error          ; TODO pla
 _load_func:
   iny
   lda (arg1),y          ; load func from closure var's value
@@ -282,6 +282,7 @@ _next:
   sta result+1
   pla
   sta result
+  lda result+1          ; re-load msb for check at start of loop
   jmp _loop
 +
   lda result

@@ -92,23 +92,23 @@ neo6502_breakpoint .macro
 start:
 
 ; Set screen to lowercase to get a semblance of readability on c64.
-;lda #23
-;sta 53272
+  ;lda #23
+  ;sta 53272
 
-lda #0
-sta buf
+  lda #0
+  sta buf
 
-lda #<startmsg
-sta arg1
-lda #>startmsg
-sta arg1+1
-jsr print_arg1
+  lda #<startmsg
+  sta arg1
+  lda #>startmsg
+  sta arg1+1
+  jsr print_arg1
 
-jmp init
+  jmp init
 
 startmsg:
-.text 89, 147, 13, "    **** c64 pasta machine  v2 ****"
-.text 13, 13,  " 4k ram interpreter  so many bytes free", 13, 13, "ready.", 13, 0
+  .text 89, 147, 13, "    **** c64 pasta machine v0.1 ****"
+  .text 13, 13,  " 4k ram interpreter  so many bytes free", 13, 13, "ready.", 13, 0
 
 ;
 ; Read / Write functions
@@ -217,6 +217,8 @@ stat_file:
 +
   jsr $FFB7             ; READST
   rts
+
+write_char = WriteCharacter
 
 next_char .macro
   jsr read_char

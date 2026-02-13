@@ -20,21 +20,23 @@
 ; Because we jump into core prims by means of rts, these need address minus one
 ; Expression level primitives are jumped to instead
 jumptable_lsb:
-  .text <push0-1, <push1-1, <push_byte-1, <push_word-1, <push_byte-1, <push_word-1, <ref_byte-1, <ref_word-1
+  .text <push0-1, <push1-1, <pushb-1, <pushw-1, <pushb-1, <pushw-1, <refb-1, <refw-1
   .text <push_result-1, <skipw-1, <skimw-1, <skimw-1, <eval-1, <done-1
   .text <return, <getb, <setb, <print, <if, <eval_block, <loop, <define
   .text <get, <set, <bind, <funcall, <args, <hist, <listp, <save
   .text <load, <reset
   .text <add, <sub, <band, <bor, <xor_or_not, <xor_or_not, <times, <div
-  .text <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land, <lor, <lnot, <dollar
+  .text <rem, <eq, <ne, <lt, <gt, <lte, <gte, <land
+  .text <lor, <shift_left, <shift_right, <lnot, <getsp, <dollar
 jumptable_msb:
-  .text >push0-1, >push1-1, >push_byte-1, >push_word-1, >push_byte-1, >push_word-1, >ref_byte-1, >ref_word-1
+  .text >push0-1, >push1-1, >pushb-1, >pushw-1, >pushb-1, >pushw-1, >refb-1, >refw-1
   .text >push_result-1, >skipw-1, >skimw-1, >skimw-1, >eval-1, >done-1
   .text >return, >getb, >setb, >print, >if, >eval_block, >loop, >define
   .text >get, >set, >bind, >funcall, >args, >hist, >listp, >save
   .text >load, >reset
   .text >add, >sub, >band, >bor, >xor_or_not, >xor_or_not, >times, >div
-  .text >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land, >lor, >lnot, >dollar
+  .text >rem, >eq, >ne, >lt, >gt, >lte, >gte, >land
+  .text >lor, >shift_left, >shift_right, >lnot, >getsp, >dollar
 
 fixed_strings:
   .text 8, "return", 0
@@ -72,10 +74,13 @@ fixed_strings:
   .text 4, ">=", 0
   .text 4, "&&", 0
   .text 4, "||", 0
+  .text 4, "<<", 0
+  .text 4, ">>", 0
   .text 3, "!", 0
- .text 3, "$", 0, 0
+  .text 4, "sp", 0
+  .text 3, "$", 0, 0
 
-NUM_FIXED_STRINGS=36
+NUM_FIXED_STRINGS=40
 
 PRIM_PUSH0=0
 PRIM_PUSH1=1
@@ -126,7 +131,10 @@ PRIM_LTE=45
 PRIM_GTE=46
 PRIM_LAND=47
 PRIM_LOR=48
-PRIM_LNOT=49
+PRIM_LSHIFT=49
+PRIM_RSHIFT=50
+PRIM_LNOT=51
+PRIM_DOLLAR=52
 
 MAX_CORE=PRIM_DONE
 
@@ -168,3 +176,9 @@ incr_ip:
 _done:
   rts
 
+getsp:
+  lda #0
+  sta arg1+1
+  stx arg1
+  txs
+  jmp thread_loop

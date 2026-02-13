@@ -3,7 +3,10 @@
 ;
 
 reset:
-  jmp init
+  beq +                 ; Really hacky hack to check if we have an arg1 (z is 0)
+  jmp start             ; Cold start
++
+  jmp init              ; Warm start
 load:
   txa
   pha
@@ -72,9 +75,9 @@ _expr_prim:
   and #$80
   beq +
   lda #' '
-  jsr WriteCharacter
+  jsr write_char
   lda #'('
-  jsr WriteCharacter
+  jsr write_char
   jmp _cont
 +
   jsr print_ws
@@ -95,7 +98,7 @@ _cont:
   jmp list_loop
 list_done:
   lda #13
-  jsr WriteCharacter
+  jsr write_char
   rts
 
 print_ws:
@@ -107,7 +110,7 @@ print_ws:
   beq +
   lda #' '
 -
-  jsr WriteCharacter
+  jsr write_char
   dey
   bne -
 +
@@ -154,7 +157,7 @@ print_pushw:
   txa
   pha
   lda #' '
-  jsr WriteCharacter
+  jsr write_char
   jsr printnum_base_10
   pla
   tax
@@ -171,12 +174,12 @@ print_strw:
 +
   sta arg1+1
   lda #' '
-  jsr WriteCharacter
+  jsr write_char
   lda #'"'
-  jsr WriteCharacter
+  jsr write_char
   jsr print_arg1
   lda #'"'
-  jsr WriteCharacter
+  jsr write_char
   jmp list_loop
 print_refb:
   lda #0
@@ -193,7 +196,7 @@ print_label:
   and #$80
   beq +                 ; in that case, don't print leading space
   lda #' '
-  jsr WriteCharacter
+  jsr write_char
 +
   jsr print_arg1
   lda argc              ; set subexpr detection bit
@@ -210,14 +213,14 @@ print_skipw:
   jsr next_list_byte
   jsr next_list_byte
   lda #' '
-  jsr WriteCharacter
+  jsr write_char
   lda argc              ; unset subexpr detection bit
   and #$7F
   sta argc
   inc argc              ; but increment depth
   clc
   lda #'{'
-  jsr WriteCharacter
+  jsr write_char
   lda #13
   bne print_char_in_a
 print_keep:
@@ -225,7 +228,7 @@ print_keep:
   jsr next_list_byte
   lda #13               ; Separate toplevel statements by a newline
 print_char_in_a:
-  jsr WriteCharacter    ; This (also) prints one extra newline at the start. Not necessary?
+  jsr write_char    ; This (also) prints one extra newline at the start. Not necessary?
   jmp list_loop
 print_scratch:
   lda primptr           ; Called from 'hist'?
@@ -248,15 +251,15 @@ print_eval:
   cmp #MAX_CORE+1       ; are we part of an expression sequence?
   bcc +
   lda #';'              ; then print separator
-  jsr WriteCharacter
+  jsr write_char
   lda #13               ; (and a newline)
-  jsr WriteCharacter
+  jsr write_char
 +
   jmp list_loop
 print_done:
   jsr next_list_byte
   lda #13
-  jsr WriteCharacter
+  jsr write_char
   dec argc
   jsr print_ws
   lda #'}'

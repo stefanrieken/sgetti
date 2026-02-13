@@ -58,7 +58,7 @@ print: ; print a unique_string or similarly formatted string
   jmp print
 _done
 ;  lda #13               ; so that we can write a newline (may remove this feature later)
-;  jsr WriteCharacter
+;  jsr write_char
   txs ; restore stack
   jmp thread_loop
 
@@ -122,7 +122,7 @@ _eval:
   lda $0101,x           ; while retaining it on stack
   sta ip
   lda $0102,x
-  lda ip+1              ; save block to find it back after 'eval'
+  sta ip+1              ; save block to find it back after 'eval'
   jsr thread_loop       ; run the block
   lda arg1              ; is return value 0 == false?
   bne _eval

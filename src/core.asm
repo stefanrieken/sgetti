@@ -10,7 +10,7 @@ push0:
 push1:
   ldx #$1
   bne push_byte_in_x
-push_byte:
+pushb:
   jsr next_byte ; then fall through:
   tax
 push_byte_in_x:
@@ -20,7 +20,7 @@ push_word_in_x_a:
   txa ; lsb is pushed last so that it is pulled first
   pha
   jmp thread_loop
-push_word:
+pushw:
   jsr next_byte
   tax ; keep lsb safe in x
   jsr next_byte
@@ -28,11 +28,11 @@ push_word:
   txa
   pha ; push lsb last
   jmp thread_loop
-ref_byte:
+refb:
   jsr next_byte
   tax
   lda #$00
-ref_word:
+refw:
   jsr next_byte
   tax
   jsr next_byte

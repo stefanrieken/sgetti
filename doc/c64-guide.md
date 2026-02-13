@@ -141,21 +141,19 @@ a function as a result value towards a higher scope than where it was bound.
 
 ## Workflow
 Sgetti saves your input directly as bytecode, from which the source code is
-reproduced, so some formatting changes are to be expected; the present state of
-the art simply discards whitespace altogether.
+reproduced, so your code will automatically be pretty-printed -- to a fashion.
 
 Currently Sgetti keeps a full command log (type `hist` instead of `list`), but
-it will only save toplevel `define` statements. This makes it so that a program
-consists of the collection of all global variable and function definitions.
+it will only save toplevel `define` statements to file. This way, a program is
+defined in terms of its global variable and function definitions.
 
 Ideally you can simply edit or redefine a global function, and the old
 definition is scratched; as this is not implemented yet, be careful when
 you want to refactor a function.
 
-It is possible to save individual program pieces, to load in and combine them
-later. Overall, saving and then (resetting and) loading a program is the
-preferred way to clean up the runtime environment, since the code is saved as
-text, which is freshly parsed when loaded.
+A good strategy is to save individual program pieces, and reload and combine
+them later. Reloading your program from disk also helps to declutter the
+runtime environment.
 
 We also still miss a way to save and load binary data.
 
