@@ -43,21 +43,25 @@ statement of any block serves as its return value; for a loop, if the block
 returns nonzero (= 'true'), it will be run again.  This means that we can
 construct a finite loop as follows:
 
-        define "x" 100
+        define x: 100
         loop [
           print "hello ";
-          set "x" (- x 1)
+          set x: (- x 1)
         ]
 
 Note that while the `define` statement is evaluated on the spot, the multi-line
-`loop` statement is not evaluated until fully entered. This is because the REPL
+`loop` statement is not evaluated until fully typed in. This is because the REPL
 (read-eval-print-loop; the command line interpreter) waits on any open brackets
 to close before evaluating the line. As any expressions within the brackets can
-now span multiple lines, the must be consistently separated by a `;`.
+now span multiple lines, these must be consistently separated by a `;`.
 
-Pasta variable slot references are always written as strings, so that their
-unquoted label form always implies value substitution. Pasta expressions are
-always in prefixed form, and sub-expressions must always be in brackets.
+Where a variable reference like `x` will push its current value at runtime, a
+slot reference like `x:` just references its slot. In Sgetti (and various other
+Pasta implementations) you will find that `x:` is just a string reference, and
+can be substituted by `"x"`.
+
+Also observe that Pasta expressions are always in prefixed form, and
+sub-expressions must always be in brackets.
 
 After running this loop, Pasta will print `[0]`. This is the outcome of the
 `(- x 1)` subexpression as returned by `set` as the final result of the block;
@@ -69,16 +73,16 @@ address of the `"hello "` string.)
 If, after having entered the above, we now type `list`, the result will only
 read:
 
-        define "x" 100
+        define x: 100
 
 This is because `list` only picks out all toplevel `define` statements, in the
 assumption that they combine to make a program. So let's `define` our loop as
 a function this time:
 
-        define "run" (bind [
+        define run: (bind [
           loop [
             print "hello ";
-            set "x" (- x 1)
+            set x: (- x 1)
           ]
         ])
 
@@ -86,7 +90,7 @@ Having conveniently called this function `run`, we can now invoke it by simply
 typing `run`. However it won't do much, since `x` was previously run to zero.
 Currently typing `list` will not confirm this; but you can type `hist` to get a
 full transcript; or just `return x` to verify its current value. To fix this,
-first type `set "x" 100`; then `run` again.
+first type `set x: 100`; then `run` again.
 
 ## Saving a Program
 To save the current program, type:
@@ -106,12 +110,12 @@ To reload the program from new, type:
 Let's explore the expressive abilities of Pasta, by making our own for-loop
 function:
 
-        define "for" (bind [
-          args "start" "end" "step" "fn";
+        define for: (bind [
+          args start: end: step: fn:;
           
           loop [if (!= start end) [
             fn;
-            set "start" (+ start step)
+            set start: (+ start step)
           ]]
         ])
 
@@ -120,7 +124,7 @@ You may want to save your work first, but then we can try:
         for 1 10 1 (bind [print "hello "])
 
 Notice that while `bind` is required to reify a block to a (lexically scoped)
-function, it does not specify arguments like `lambda` does in LISP. Instead,
+function, it does not specify arguments, like `lambda` does in LISP. Instead,
 any `args` are to be specified immediately after opening the block.
 
 Within this loop, the `if` function should eventually produce a zero value for
@@ -148,7 +152,7 @@ it will only save toplevel `define` statements to file. This way, a program is
 defined in terms of its global variable and function definitions.
 
 Ideally you can simply edit or redefine a global function, and the old
-definition is scratched; as this is not implemented yet, be careful when
+definition is scratched; as this is not fully implemented yet, be careful when
 you want to refactor a function.
 
 A good strategy is to save individual program pieces, and reload and combine
@@ -167,9 +171,9 @@ the provided `twist` tool:
 
 The `-n` option converts the newline characters from Unix to "Mac" and back;
 and the `-SHOUT` option reverses case. Additionally, `twist` always converts
-the unicode characters near `{}` (which are missing on the C64) to the same
-block near `[]`, so that it can also convert "standard" Pasta code to C64 form.
-The latter conversion it is always applied, and never reversed.
+the ascii characters near `{}` (which are missing on the C64) to the same block
+near `[]`, so that it can also convert "standard" Pasta code to C64 form. The
+latter conversion it is always applied, and never reversed.
 
 ## Exploring C64 Features
 Sgetti on the C64 comes with all the features of the C64 itself. The commands

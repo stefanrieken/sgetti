@@ -306,7 +306,9 @@ _try_string:
   sta tmp               ; store quote to signal string
 ;  #next_char
   jsr parse_string
+  jsr unique_string_from_buf
   #sanity_check
+_emit_str:
   ldx #PRIM_STRB
   jsr emit_optimized_cmd
   jmp _next_char        ; discard closing '"' that was already parsed
@@ -315,8 +317,26 @@ _parse_label:
   ldx #$20              ; space delimits label
   stx tmp               ; and unique_string checks for this value in tmp
 
-  jsr parse_label
+  jsr parse_label       ; returns last unused char
+
+  ; BEGIN `x:` style slot references
+  cmp #' '              ; optional: allow for whitespace between `x` and `:`
+  bne +
+-
+  #next_char
+  cmp #' '
+  beq -
++
+  cmp #':'
+  bne +
+  sta tmp               ; signal to unique_str that this may be a new string
+  jsr unique_string_from_buf
+  jmp _emit_str         ; for now, just store slot reference as string ref
++
+  ; END `x:` style slot references
+
   #unread               ; final char was not a label char
+  jsr unique_string_from_buf
   bcs varref_error      ; carry marks no existing string was found; should never be so for label refs
   lda result+1
   bne _no_prim          ; a string index with msb>0 will not be a core string
@@ -399,7 +419,7 @@ _escape_done:
   jmp _next_char
 
 ;label_terminators:
-;.byte ' ', 13, '{', '}', '(', ')', '"', ';', 0
+;.byte ' ', 13, '{', '}', '(', ')', '"', ';', ':', 0
 ;string_terminators:
 ;.byte '"', 0
 
@@ -424,6 +444,8 @@ _next_char:
   beq string_or_label_done
   cmp #';'
   beq string_or_label_done
+  cmp #':'
+  beq string_or_label_done
   inx
   sta stringbuf,x
   jmp _next_char
@@ -434,18 +456,9 @@ string_or_label_done:
   lda #$0
   sta stringbuf,x
   inx
-  stx stringbuf         ; save total size to stat of string
-; feed to unique_string
-  tya                   ; unique_string affects y
-  pha                   ; so save y
-  lda #<stringbuf
-  ldy #>stringbuf
-  jsr unique_string
-  pla                   ; restore y
-  tay
+  stx stringbuf         ; save total size to start of string
   pla                   ; final char not used
   rts
-
 
 ; Throw an error if we parsed something other than a label at the start of an
 ; expression. This is easier than to restrict parser expectations beforehand,

@@ -3,18 +3,24 @@
 ; - A,Y contain string pointer, then we set:
 ; - arg1 = string to add
 ; - arg2 = used to index over string mem
-; - tmp  = 0x20 if it's a label (must be a known string) or '"' not (may add new string)
+; - tmp  = 0x20 if it's a label ref (must be a known string) or '"' / ':' if not (may add new string)
 ; Returns
 ; - arg1 pointing to unique string
 ; - result as the unique string index
 ; - carry set on error
 ;
-; Affects Y
+; Affects Y (unique_string from buf: preserves Y)
 ; Affects X (this can easily be changed to a tmp address)
 
 unique_string_from_buf:
-  lda #<stringbuf
-  ldy #>stringbuf
+    tya
+    pha
+    lda #<stringbuf
+    ldy #>stringbuf
+    jsr unique_string
+    pla
+    tay
+    rts
 unique_string:
     sta arg1            ; (if) arg1 is passed in A/Y, store its value in zero page so we can use it
     sty arg1+1
@@ -61,10 +67,10 @@ _switch_to_stringmem:   ; switch from static to dynamic string memory
     bne _compare_string
 _new_ustring:
     lda tmp
-    cmp #'"'
-    beq +
+    cmp #' '
+    bne +
     sec
-    bne _done           ; if label, it must exist!
+    beq _done           ; if label, it must exist!
 +
     ; transfer from arg1 to arg2; zero terminated
     ldy #$FF

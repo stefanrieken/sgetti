@@ -3,13 +3,13 @@
 # receiving the block is skipped or not.
 
 # This is the first found value for 'x' in case of lexical scoping.
-define "x" "lexical"
+define x: "lexical"
 
-define "foo" (bind {
-    args "bar";
+define foo: (bind {
+    args bar:;
 
     # This later definition of 'x' is not skipped in case of dynamic scoping.
-    define "x" "dynamic";
+    define x: "dynamic";
 
     bar
 })

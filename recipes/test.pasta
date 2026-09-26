@@ -1,10 +1,10 @@
-        define "f" (bind {
-          args "x";
-          if (= x 0x2a) { print "correct!" };
-          loop {
-            print "hello";
-            set "x" (- x 1)
-          }
-        })
-        f 6
+define f: (bind {
+  args x:;
+  if (= x 0x2a) { print "correct!" };
+  loop {
+    print "hello";
+    set x: (- x 1)
+  }
+})
+f 6
 

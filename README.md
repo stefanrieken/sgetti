@@ -3,7 +3,11 @@
 Sgetti Is a Threaded Pasta intepreter for the 6502 processor. It is developed
 against the Commodore 64 and Neo6502 (by means of their emulators).
 
-To get started on the C64 version, read the [C64 Sgetting Started Guide](doc/c64-guide.md)
+Sgetti depends on the `tas64` assembler, and on `cc1541` for making disk images.
+A number of Makefile targets will directly run Pasta on `kernalemu`, `tmce64` or
+`neo65` if these projects are found in adjacent directories.
+
+To get started on the C64 version, read the [C64 Sgetting Started Guide](doc/c64-guide.md).
 
 ## Pasta
 [Pasta](https://github.com/stefanrieken/pasta) is a programming langauge I
